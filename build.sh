@@ -1,0 +1,42 @@
+#!/bin/bash
+#SBATCH -w hepnode0 ## Only run it on hepnode0
+#SBATCH -N 1
+#SBATCH -n 16
+#SBATCH -J m5C-build
+#SBATCH -o output/build.%j.out
+
+set -euo pipefail
+
+eval $(spack load --sh gcc@11.4.0)
+
+echo "================= Debug Info ================="
+echo "Job Owner: $(whoami)"
+echo "Job Nodelist: ${SLURM_JOB_NODELIST}"
+echo "Job Date: $(date)"
+echo "Current Branch: $(git rev-parse --abbrev-ref HEAD)"
+echo "Current Commit ID: $(git rev-parse HEAD)"
+echo
+echo "+++ Job Content +++"
+cat $0
+echo "+++ Job Content +++"
+echo -e "================== Debug Info ==================\n\n"
+
+# build hisat-3n
+pushd hisat-3n
+
+make -j16
+
+popd
+
+# build samtools
+pushd samtools-1.21
+
+if [ ! -e configure ]; then
+    autoreconf
+    ./configure --enable-configure-htslib
+fi
+
+make -j16
+make prefix=./ install
+
+popd
