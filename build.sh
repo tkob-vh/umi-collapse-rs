@@ -32,11 +32,19 @@ popd
 pushd samtools-1.21
 
 if [ ! -e configure ]; then
-    autoreconf
-    ./configure --enable-configure-htslib
+  autoreconf
+  ./configure --enable-configure-htslib
 fi
 
 make -j16
-make prefix=./ install
+# make prefix=./ install
 
 popd
+
+# UMICollapse
+if [ ! -d UMICollapse-1.0.0 ]; then
+  if [ ! -e UMICollapse-1.0.0.tar.gz ]; then
+    wget https://github.com/Daniel-Liu-c0deb0t/UMICollapse/archive/refs/tags/v1.0.0.tar.gz -O UMICollapse-1.0.0.tar.gz
+  fi
+  tar -xvf UMICollapse-1.0.0.tar.gz
+fi
