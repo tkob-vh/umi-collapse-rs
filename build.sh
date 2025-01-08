@@ -42,9 +42,20 @@ make -j16
 popd
 
 # UMICollapse
-if [ ! -d UMICollapse-1.0.0 ]; then
-  if [ ! -e UMICollapse-1.0.0.tar.gz ]; then
-    wget https://github.com/Daniel-Liu-c0deb0t/UMICollapse/archive/refs/tags/v1.0.0.tar.gz -O UMICollapse-1.0.0.tar.gz
-  fi
-  tar -xvf UMICollapse-1.0.0.tar.gz
-fi
+# if [ ! -d UMICollapse-1.0.0 ]; then
+#     if [ ! -e UMICollapse-1.0.0.tar.gz ]; then
+#         wget https://github.com/Daniel-Liu-c0deb0t/UMICollapse/archive/refs/tags/v1.0.0.tar.gz -O UMICollapse-1.0.0.tar.gz
+#     fi
+#     tar -xvf UMICollapse-1.0.0.tar.gz
+# fi
+
+# UMICollapse
+pushd UMICollapse-1.0.0
+
+mkdir lib
+pushd lib
+curl -O -L https://repo1.maven.org/maven2/com/github/samtools/htsjdk/2.19.0/htsjdk-2.19.0.jar
+curl -O -L https://repo1.maven.org/maven2/org/xerial/snappy/snappy-java/1.1.7.3/snappy-java-1.1.7.3.jar
+popd
+
+popd
