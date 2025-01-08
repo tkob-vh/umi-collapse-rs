@@ -25,8 +25,8 @@ datadir=/data/Competitions/ASC25/m5C/data
 num_threads=32
 srr=${srr:-SRR23538290}
 
-# Only process one srr file.
-# Without the final stage (m5C-UBSseq).
+## Only process one srr file.
+## The following commands should be executed for each dataset.
 
 echo "====== data cleaning: $(date) ======"
 cutseq "${datadir}/${srr}/${srr}.fastq" \
@@ -39,7 +39,7 @@ cutseq "${datadir}/${srr}/${srr}.fastq" \
     --short-file "${datadir}/${srr}/${srr}.fastq_tooshort" \
     --untrimmed-file "${datadir}/${srr}/${srr}.fastq_untrimmed"
 
-echo "====== rRNA, tRNA filtering and genome alignment: $(date) ======"
+echo "====== get ncrna.mapped.bam: $(date) ======"
 ./hisat-3n/hisat-3n --index "${datadir}/ncrna_ref/Homo_sapiens.GRCh38.ncrna.fa" \
     --summary-file "${datadir}/${srr}/map2ncrna.output.summary" \
     --new-summary -q \
@@ -55,11 +55,11 @@ echo "====== rRNA, tRNA filtering and genome alignment: $(date) ======"
         --unoutput "${datadir}/${srr}/${srr}.ncrna.unmapped.bam" \
         --output "${datadir}/${srr}/${srr}.ncrna.mapped.bam"
 
-echo "====== $(date) ======"
+echo "====== get mRNA.fastq: $(date) ======"
 ./samtools-1.21/samtools fastq --threads "${num_threads}" \
     -O "${datadir}/${srr}/${srr}.ncrna.unmapped.bam" >"${datadir}/${srr}/${srr}.mRNA.fastq"
 
-echo "====== $(date) ======"
+echo "====== get mRNA.genome.mapped.bam: $(date) ======"
 ./hisat-3n/hisat-3n --index "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa" \
     --threads "${num_threads}" \
     --summary-file "${datadir}/${srr}/map2genome.output.summary" \
@@ -75,20 +75,20 @@ echo "====== $(date) ======"
         --unoutput "${datadir}/${srr}/${srr}.mRNA.genome.unmapped.bam" \
         --output "${datadir}/${srr}/${srr}.mRNA.genome.mapped.bam"
 
-echo "====== sorting and deduplication: $(date) ======"
+echo "====== get mRNA.genome.mapped.sorted.bam: $(date) ======"
 ./samtools-1.21/samtools sort --threads "${num_threads}" \
     --write-index \
     --output-fmt BAM \
     -o "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam" \
     "${datadir}/${srr}/${srr}.mRNA.genome.mapped.bam"
 
-echo "====== $(date) ======"
+echo "====== get mRNA.genome.mapped.sorted.bam.tsv: $(date) ======"
 ./samtools-1.21/samtools view --threads "${num_threads}" \
     --exclude-flags 3980 \
     --count \
     "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam" >"${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam.tsv"
 
-echo "====== $(date) ======"
+echo "====== get mRNA.genome.mapped.sorted.dedup.bam: $(date) ======"
 java -server -Xms8G -Xmx40G -Xss100M -Djava.io.tmpdir="${datadir}/${srr}" \
     -jar ./UMICollapse-1.0.0/umicollapse.jar bam \
     -t 2 -T 16 \
@@ -98,12 +98,12 @@ java -server -Xms8G -Xmx40G -Xss100M -Djava.io.tmpdir="${datadir}/${srr}" \
     -i "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam" \
     -o "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" >"${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.log"
 
-echo "====== $(date) ======"
+echo "====== get mRNA.genome.mapped.sorted.dedup.bam.bai: $(date) ======"
 ./samtools-1.21/samtools index --threads "${num_threads}" \
     "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" \
     "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam.bai"
 
-echo "====== site calling and filtering: $(date) ======"
+echo "====== get unifiltered_unique.tsv.gz: $(date) ======"
 ./samtools-1.21/samtools view --expr "rlen<100000" \
     --with-header "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" |
     ./hisat-3n/hisat-3n-table --threads "${num_threads}" \
@@ -115,7 +115,7 @@ echo "====== site calling and filtering: $(date) ======"
     cut -f 1,2,3,5,7 |
     gzip -c >"${datadir}/${srr}/${srr}_unfiltered_uniq.tsv.gz"
 
-echo "====== $(date) ======"
+echo "====== get unfiltered_multi.tsv.gz: $(date) ======"
 ./samtools-1.21/samtools view --expr "rlen<100000" \
     --with-header "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" |
     ./hisat-3n/hisat-3n-table --threads "${num_threads}" \
@@ -127,11 +127,43 @@ echo "====== $(date) ======"
     cut -f 1,2,3,5,7 |
     gzip -c >"${datadir}/${srr}/${srr}_unfiltered_multi.tsv.gz"
 
-echo "====== $(date) ======"
+echo "====== get mRNA.genome.mapped.sorted.dedup.filtered.bam: $(date) ======"
 ./samtools-1.21/samtools view --threads "${num_threads}" \
     --expr "[XM] * 20 <= (qlen-sclen) && [Zf] <= 3 && 3 * [Zf] <= [Zf] + [Yf]" \
     "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" \
     --output-fmt BAM \
     --output "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.filtered.bam"
+
+echo "====== get filtered_uniq.tsv.gz: $(date) ======"
+./samtools-1.21/samtools view --expr "rlen<100000" \
+    --with-header "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.filtered.bam" |
+    ./hisat-3n/hisat-3n-table --threads "${num_threads}" \
+        --unique-only \
+        --alignments - \
+        --ref "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa" \
+        --output-name /dev/stdout \
+        --base-change C,T |
+    cut -f 1,2,3,5,7 |
+    gzip -c >"${datadir}/${srr}/${srr}_filtered_uniq.tsv.gz"
+
+echo "====== get filtered_multi.tsv.gz: $(date) ======"
+./samtools-1.21/samtools view --expr "rlen<100000" \
+    --with-header "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.filtered.bam" |
+    ./hisat-3n/hisat-3n-table --threads "${num_threads}" \
+        --multiple-only \
+        --alignments - \
+        --ref "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa" \
+        --output-name /dev/stdout \
+        --base-change C,T |
+    cut -f 1,2,3,5,7 |
+    gzip -c >"${datadir}/${srr}/${srr}_filtered_multi.tsv.gz"
+
+echo "====== join_pileup and get genome.arror: $(date) ======"
+python ./m5C-UBSseq-0.1/bin/join_pileup.py -i \
+    "${datadir}/${srr}/${srr}_unfiltered_uniq.tsv.gz" \
+    "${datadir}/${srr}/${srr}_unfiltered_multi.tsv.gz" \
+    "${datadir}/${srr}/${srr}_filtered_uniq.tsv.gz" \
+    "${datadir}/${srr}/${srr}_filtered_multi.tsv.gz" \
+    -o "${datadir}/${srr}/${srr}_genome.arrow"
 
 echo -e "\n\nDone: $(date)"
