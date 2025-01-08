@@ -1,0 +1,137 @@
+#!/bin/bash
+#SBATCH -J nosnake
+#SBATCH -N 1
+#SBATCH -n 64
+#SBATCH -w hepnode[1-3]
+#SBATCH --exclusive
+#SBATCH -o output/no_snake.%j.log
+
+set -euo pipefail
+
+echo "================= Debug Info ================="
+echo "Job Owner: $(whoami)"
+echo "Job Nodelist: ${SLURM_JOB_NODELIST}"
+echo "Job Date: $(date)"
+echo "Current Branch: $(git rev-parse --abbrev-ref HEAD)"
+echo "Current Commit ID: $(git rev-parse HEAD)"
+echo
+echo "+++ Job Content +++"
+cat $0
+echo "+++ Job Content +++"
+echo -e "================== Debug Info ==================\n\n"
+
+basedir=$(pwd)
+datadir=/data/Competitions/ASC25/m5C/data
+num_threads=32
+srr=${srr:-SRR23538290}
+
+# Only process one srr file.
+# Without the final stage (m5C-UBSseq).
+
+echo "====== data cleaning: $(date) ======"
+cutseq "${datadir}/${srr}/${srr}.fastq" \
+    --threads "${num_threads}" \
+    --adapter-name INLINE \
+    --min-length 20 \
+    --trim-polyA \
+    --ensure-inline-barcode \
+    --output-file "${datadir}/${srr}/${srr}.fastq_cut" \
+    --short-file "${datadir}/${srr}/${srr}.fastq_tooshort" \
+    --untrimmed-file "${datadir}/${srr}/${srr}.fastq_untrimmed"
+
+echo "====== rRNA, tRNA filtering and genome alignment: $(date) ======"
+./hisat-3n/hisat-3n --index "${datadir}/ncrna_ref/Homo_sapiens.GRCh38.ncrna.fa" \
+    --summary-file "${datadir}/${srr}/map2ncrna.output.summary" \
+    --new-summary -q \
+    -U "${datadir}/${srr}/${srr}.fastq_cut" \
+    --threads "${num_threads}" \
+    --base-change C,T \
+    --mp 8,2 \
+    --no-spliced-alignment \
+    --directional-mapping |
+    ./samtools-1.21/samtools view --threads "${num_threads}" \
+        --expr '!flag.unmap' \
+        --output-fmt BAM \
+        --unoutput "${datadir}/${srr}/${srr}.ncrna.unmapped.bam" \
+        --output "${datadir}/${srr}/${srr}.ncrna.mapped.bam"
+
+echo "====== $(date) ======"
+./samtools-1.21/samtools fastq --threads "${num_threads}" \
+    -O "${datadir}/${srr}/${srr}.ncrna.unmapped.bam" >"${datadir}/${srr}/${srr}.mRNA.fastq"
+
+echo "====== $(date) ======"
+./hisat-3n/hisat-3n --index "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa" \
+    --threads "${num_threads}" \
+    --summary-file "${datadir}/${srr}/map2genome.output.summary" \
+    --new-summary -q \
+    -U "${datadir}/${srr}/${srr}.mRNA.fastq" \
+    --directional-mapping \
+    --base-change C,T \
+    --pen-noncansplice 20 \
+    --mp 4,1 |
+    ./samtools-1.21/samtools view --threads "${num_threads}" \
+        --expr '!flag.unmap' \
+        --output-fmt BAM \
+        --unoutput "${datadir}/${srr}/${srr}.mRNA.genome.unmapped.bam" \
+        --output "${datadir}/${srr}/${srr}.mRNA.genome.mapped.bam"
+
+echo "====== sorting and deduplication: $(date) ======"
+./samtools-1.21/samtools sort --threads "${num_threads}" \
+    --write-index \
+    --output-fmt BAM \
+    -o "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam" \
+    "${datadir}/${srr}/${srr}.mRNA.genome.mapped.bam"
+
+echo "====== $(date) ======"
+./samtools-1.21/samtools view --threads "${num_threads}" \
+    --exclude-flags 3980 \
+    --count \
+    "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam" >"${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam.tsv"
+
+echo "====== $(date) ======"
+java -server -Xms8G -Xmx40G -Xss100M -Djava.io.tmpdir="${datadir}/${srr}" \
+    -jar ./UMICollapse-1.0.0/umicollapse.jar bam \
+    -t 2 -T 16 \
+    --data naive \
+    --merge avgqual \
+    --two-pass \
+    -i "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam" \
+    -o "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" >"${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.log"
+
+echo "====== $(date) ======"
+./samtools-1.21/samtools index --threads "${num_threads}" \
+    "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" \
+    "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam.bai"
+
+echo "====== site calling and filtering: $(date) ======"
+./samtools-1.21/samtools view --expr "rlen<100000" \
+    --with-header "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" |
+    ./hisat-3n/hisat-3n-table --threads "${num_threads}" \
+        --unique-only \
+        --alignments - \
+        --ref "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa" \
+        --output-name /dev/stdout \
+        --base-change C,T |
+    cut -f 1,2,3,5,7 |
+    gzip -c >"${datadir}/${srr}/${srr}_unfiltered_uniq.tsv.gz"
+
+echo "====== $(date) ======"
+./samtools-1.21/samtools view --expr "rlen<100000" \
+    --with-header "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" |
+    ./hisat-3n/hisat-3n-table --threads "${num_threads}" \
+        --multiple-only \
+        --alignments - \
+        --ref "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa" \
+        --output-name /dev/stdout \
+        --base-change C,T |
+    cut -f 1,2,3,5,7 |
+    gzip -c >"${datadir}/${srr}/${srr}_unfiltered_multi.tsv.gz"
+
+echo "====== $(date) ======"
+./samtools-1.21/samtools view --threads "${num_threads}" \
+    --expr "[XM] * 20 <= (qlen-sclen) && [Zf] <= 3 && 3 * [Zf] <= [Zf] + [Yf]" \
+    "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam" \
+    --output-fmt BAM \
+    --output "${datadir}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.filtered.bam"
+
+echo -e "\n\nDone: $(date)"
