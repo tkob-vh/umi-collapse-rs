@@ -1,24 +1,11 @@
 #!/bin/bash
 #SBATCH -J nosnake
 #SBATCH -N 1
-#SBATCH -n 64
+#SBATCH -n 32
 #SBATCH -w hepnode[1-3]
-#SBATCH --exclusive
 #SBATCH -o output/no_snake.%j.log
 
 set -euo pipefail
-
-echo "================= Debug Info ================="
-echo "Job Owner: $(whoami)"
-echo "Job Nodelist: ${SLURM_JOB_NODELIST}"
-echo "Job Date: $(date)"
-echo "Current Branch: $(git rev-parse --abbrev-ref HEAD)"
-echo "Current Commit ID: $(git rev-parse HEAD)"
-echo
-echo "+++ Job Content +++"
-cat $0
-echo "+++ Job Content +++"
-echo -e "================== Debug Info ==================\n\n"
 
 basedir=$(pwd)
 datadir=/data/Competitions/ASC25/m5C/data
@@ -26,8 +13,24 @@ dataout="${basedir}/data"
 num_threads=32
 srr=${srr:-SRR23538290}
 
-if [! -f ${dataout} ]; then
-    mkdir -p "data/${srr}"
+echo "================= Debug Info ================="
+echo "Job Owner: $(whoami)"
+echo "Job Nodelist: ${SLURM_JOB_NODELIST}"
+echo "Job Date: $(date)"
+echo "Current Branch: $(git rev-parse --abbrev-ref HEAD)"
+echo "Current Commit ID: $(git rev-parse HEAD)"
+echo "SRR ID: ${srr}"
+echo
+echo "+++ Job Content +++"
+cat $0
+echo "+++ Job Content +++"
+echo -e "================== Debug Info ==================\n\n"
+
+if [ ! -d "${dataout}" ]; then
+    mkdir "data"
+fi
+if [ ! -d "${dataout}/${srr}" ]; then
+    mkdir "data/${srr}"
 fi
 
 ## Only process one srr file.
