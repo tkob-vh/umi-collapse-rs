@@ -19,7 +19,7 @@ fi
 ./hisat-3n/hisat-3n-build -p 32 --base-change C,T "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa" "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
 ./samtools-1.21/samtools faidx "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
 
-awk 'BEGIN{{OFS="\\t"}}{{print $1,$1,0,$2,"+"}}' "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai" >"${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa.saf"
+awk 'BEGIN{{OFS="\t"}}{{print $1,$1,0,$2,"+"}}' "${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai" >"${datadir}/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa.saf"
 
 date
 
