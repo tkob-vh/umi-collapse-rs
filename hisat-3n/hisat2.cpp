@@ -61,6 +61,8 @@
 #include "hisat2lib/ht2.h"
 //#include "utility_3n.h"
 
+#include "simple_timer.h"
+constexpr char* timer_file = "output/timer.txt";
 
 using namespace std;
 
@@ -3340,6 +3342,7 @@ static inline void printEEScoreMsg(
  * -
  */
 static void multiseedSearchWorker_hisat2(void *vp) {
+  ScopedTimer multiseedSearchWorker_hisat2_timer(__FUNCTION__);
 	int tid = *((int*)vp);
 
     if (threeN) {
@@ -3932,6 +3935,7 @@ static void multiseedSearch(
                             BitPairReference* rrefs,      // repeat reference
                             OutFileBuf *metricsOfb)
 {
+  ScopedTimer multiseedSearch_timer(__FUNCTION__);
     multiseed_patsrc       = &patsrc;
 	multiseed_msink        = &msink;
 	multiseed_sc           = &sc;
@@ -3982,6 +3986,7 @@ static void driver(
 	const string bt2indexBases[2],
 	const string& outfile)
 {
+  ScopedTimer driver_timer(__FUNCTION__);
 	if(gVerbose || startVerbose)  {
 		cerr << "Entered driver(): "; logTime(cerr, true);
 	}
@@ -4958,6 +4963,8 @@ int hisat2(int argc, const char **argv) {
 			}
 			driver<SString<char> >("DNA", bt2indexs, outfile);
 		}
+    std::ofstream ofs(timer_file);
+    ofs << SimpleTimer::summery() << std::endl;
 		return 0;
 	} catch(std::exception& e) {
 		cerr << "Error: Encountered exception: '" << e.what() << "'" << endl;
