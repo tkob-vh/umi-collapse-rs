@@ -14,6 +14,7 @@ export dataout="${basedir}/data"
 export num_threads=32
 export srr=${srr:-SRR23538290}
 vtune_type=${vtunt_type:-"performance-snapshot"}
+profiling_results=/data/Competitions/ASC25/m5C/profiling_results
 
 eval $(spack load --sh intel-oneapi-vtune@2024.0.1)
 
@@ -54,7 +55,7 @@ vtune -collect "${vtune_type}" \
   -source-search-dir="${basedir}/samtools-1.21" \
   -search-dir="${basedir}/hisat-3n" \
   -search-dir="${basedir}/samtools-1.21" \
-  -result-dir="${basedir}/profiling_results/rna_align/vtune_${vtune_type}_${SLURM_JOBID}" \
+  -result-dir="${profiling_results}/rna_align/vtune_${vtune_type}_${SLURM_JOBID}" \
   -- ./steps/rna_align.sh
 
 # echo "====== sam_after_rna_align ======"
@@ -67,7 +68,7 @@ vtune -collect "${vtune_type}" \
   -source-search-dir="${basedir}/samtools-1.21" \
   -search-dir="${basedir}/hisat-3n" \
   -search-dir="${basedir}/samtools-1.21" \
-  -result-dir="${basedir}/profiling_results/genome_align/vtune_${vtune_type}_${SLURM_JOBID}" \
+  -result-dir="${profiling_results}/genome_align/vtune_${vtune_type}_${SLURM_JOBID}" \
   -- ./steps/genome_align.sh
 
 # echo "====== sam_sort ======"
@@ -81,7 +82,7 @@ vtune -collect "${vtune_type}" \
   -data-limit=0 \
   -source-search-dir="${basedir}/UMICollapse-1.0.0" \
   -search-dir="${basedir}/UMICollapse-1.0.0" \
-  -result-dir="${basedir}/profiling_results/dedup_mapping/vtune_${vtune_type}_${SLURM_JOBID}" \
+  -result-dir="${profiling_results}/dedup_mapping/vtune_${vtune_type}_${SLURM_JOBID}" \
   -- ./steps/dedup_mapping.sh
 
 # echo "====== dedup_index ======"
@@ -94,7 +95,7 @@ vtune -collect "${vtune_type}" \
   -source-search-dir="${basedir}/hisat-3n" \
   -search-dir="${basedir}/hisat-3n" \
   -search-dir="${basedir}/samtools-1.21" \
-  -result-dir="${basedir}/profiling_results/unfiltered_uniq/vtune_${vtune_type}_${SLURM_JOBID}" \
+  -result-dir="${profiling_results}/unfiltered_uniq/vtune_${vtune_type}_${SLURM_JOBID}" \
   -- ./steps/unfiltered_uniq.sh
 
 # echo "====== unfiltered_multi ======"
