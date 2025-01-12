@@ -3,3 +3,4 @@ profiling_results/
 data/
 .cache/
 compile_commands.json
+.vscode/

@@ -27,6 +27,7 @@
 #include "filebuf.h"
 #include "formats.h"
 
+#include "simple_timer.h"
 #ifdef USE_SRA
 
 #include "tinythread.h"
@@ -85,6 +86,7 @@ bool PatternSource::nextReadPair(
 	bool& paired,
 	bool fixName)
 {
+  ScopedTimer nextReadPair_timer(__FUNCTION__);
 	// nextPatternImpl does the reading from the ultimate source;
 	// it is implemented in concrete subclasses
 	success = done = paired = false;

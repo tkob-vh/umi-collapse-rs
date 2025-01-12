@@ -45,6 +45,7 @@
 #include "tp.h"
 #include "gp.h"
 
+#include "simple_timer.h"
 // Allow longer introns for long anchored reads involving canonical splice sites
 inline uint32_t MaxIntronLen(uint32_t anchor, uint32_t minAnchorLen) {
     uint32_t intronLen = 0;
@@ -4131,6 +4132,7 @@ public:
            RandomSource&              rnd,
            AlnSinkWrap<index_t>&      sink)
     {
+        ScopedTimer go_timer(__FUNCTION__);
         const ReportingParams& rp = sink.reportingParams();
         
         index_t rdi;
