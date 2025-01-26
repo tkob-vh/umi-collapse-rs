@@ -306,25 +306,33 @@ rule dedup_mapping:
     input:
         bam=TEMPDIR / "combined_mapping/{sample}.{ref}.bam",
     output:
-        dedup_bam = "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.bam",
+        dedup_bam = "{sample}/{sample}.mRNA.genome.mapped.dedup.bam",
         log = "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.log"
     threads: 16
     benchmark:
         "benchmark/dedup_mapping/{sample}.tsv"
     shell:
         """
-        java -server -Xms8G -Xmx40G -Xss100M -Djava.io.tmpdir={wildcards.sample} \
-                -jar {BIN[umicollapse]} \
-                bam \
-                -t 2 \
-                -T {threads} \
-                --data naive \
-                --merge avgqual \
-                --two-pass \
-                -i {input.bam} \
-                -o {output.dedup_bam} \
-                > {output.log}
+        {BIN[umicollapse]} --mode bam \
+          --data naive \
+          --merge avgqual \
+          --num-threads {threads} \
+          -i {input.bam} \
+          -o {output.dedup_bam} > {output.log}
         """
+
+rule dedup_mapping_sort:
+    input:
+        bam = "{sample}/{sample}.mRNA.genome.mapped.dedup.bam"
+    output:
+        bam = "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.bam"
+    threads: 64
+    shell:
+        """
+        {BIN[samtools]} sort --threads {threads} --write-index --output-fmt BAM \
+          -o {output.bam} {input.bam}
+        """
+
 
 rule dedup_index:
     input:

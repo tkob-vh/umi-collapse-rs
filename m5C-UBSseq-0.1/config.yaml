@@ -1,7 +1,9 @@
 path:
-  samtools: /path/to/samtools
-  hisat3n: /path/to/hisat-3n
-  hisat3ntable: /path/to/hisat-3n-table
+  samtools: ../../samtools-1.21/samtools 
+  hisat3n: ../../hisat-3n/hisat-3n 
+  hisat3ntable: ../../hisat-3n/hisat-3n-table
+  umicollapse: ../../umicollapse/target/release/umicollapse
+  # umicollapse: ../../UMICollapse-1.0.0/umicollapse.jar
   join_pileup.py: ../bin/join_pileup.py
   group_pileup.py: ../bin/group_pileup.py
   select_sites.py: ../bin/select_sites.py
