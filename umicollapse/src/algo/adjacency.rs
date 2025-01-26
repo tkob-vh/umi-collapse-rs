@@ -27,8 +27,6 @@ impl Algorithm for Adjacency {
         umi_length: usize,
         k: i32,
         percentage: f32,
-        _: &mut i32,
-        _: &mut i32,
     ) -> Vec<std::sync::Arc<dyn crate::utils::read::UcRead>> {
         let mut freq: Vec<UmiFreq> = reads
             .iter()

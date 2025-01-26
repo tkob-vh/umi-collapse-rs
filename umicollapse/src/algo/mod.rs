@@ -20,8 +20,6 @@ pub trait Algorithm: Algo {
         umi_length: usize,
         k: i32,
         percentage: f32,
-        primary_count: &mut i32,
-        secondary_count: &mut i32,
     ) -> Vec<Arc<dyn crate::utils::read::UcRead>>;
 }
 
