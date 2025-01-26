@@ -7,8 +7,6 @@
 
 set -euo pipefail
 
-eval $(spack load --sh gcc@11.4.0)
-
 echo "================= Debug Info ================="
 echo "Job Owner: $(whoami)"
 echo "Job Nodelist: ${SLURM_JOB_NODELIST}"
@@ -20,6 +18,9 @@ echo "+++ Job Content +++"
 cat $0
 echo "+++ Job Content +++"
 echo -e "================== Debug Info ==================\n\n"
+
+eval $(spack load --sh intel-oneapi-compilers@2024)
+eval $(spack load --sh intel-tbb)
 
 # build hisat-3n
 pushd hisat-3n
@@ -42,14 +43,18 @@ make -j16
 popd
 
 # UMICollapse
-pushd UMICollapse-1.0.0
-
-if [! -d lib ]; then
-    mkdir lib
-    pushd lib
-    curl -O -L https://repo1.maven.org/maven2/com/github/samtools/htsjdk/2.19.0/htsjdk-2.19.0.jar
-    curl -O -L https://repo1.maven.org/maven2/org/xerial/snappy/snappy-java/1.1.7.3/snappy-java-1.1.7.3.jar
-    popd
-fi
-
+pushd umicollapse
+cargo build --release
 popd
+
+# pushd UMICollapse-1.0.0
+#
+# if [ ! -d lib ]; then
+#     mkdir lib
+#     pushd lib
+#     curl -O -L https://repo1.maven.org/maven2/com/github/samtools/htsjdk/2.19.0/htsjdk-2.19.0.jar
+#     curl -O -L https://repo1.maven.org/maven2/org/xerial/snappy/snappy-java/1.1.7.3/snappy-java-1.1.7.3.jar
+#     popd
+# fi
+#
+# popd
