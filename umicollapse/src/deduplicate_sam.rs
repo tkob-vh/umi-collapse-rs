@@ -114,11 +114,6 @@ impl DeduplicateSAM {
 
         let mut record = Record::new();
 
-        let mut primary_count_1: i32 = 0;
-        let mut secondary_count_1: i32 = 0;
-        let mut primary_count_2: i32 = 0;
-        let mut secondary_count_2: i32 = 0;
-
         while let Some(r) = reader.read(&mut record) {
             r.expect("Failed to parse record");
 
@@ -205,14 +200,14 @@ impl DeduplicateSAM {
             }
         }
 
-        debug!("Number of input reads: {}", self.total_read_count);
-        debug!("Number of removed unmapped reads: {}", self.unmapped);
-        if args.paired {
-            debug!("Number of unpaired reads: {}", self.unpaired);
-            debug!("Number of chimeric reads: {}", self.chimeric);
-        }
-
-        debug!("Number of unique alignment positions: {}", align.len());
+        // debug!("Number of input reads: {}", self.total_read_count);
+        // debug!("Number of removed unmapped reads: {}", self.unmapped);
+        // if args.paired {
+        //     debug!("Number of unpaired reads: {}", self.unpaired);
+        //     debug!("Number of chimeric reads: {}", self.chimeric);
+        // }
+        //
+        // debug!("Number of unique alignment positions: {}", align.len());
 
         drop(reader);
 
@@ -227,51 +222,18 @@ impl DeduplicateSAM {
                 None
             };
 
-        // Above is correct.
-
-        let mut iteration = 0;
         for (alignment, umi_reads) in align.iter() {
-            iteration += 1;
-            if iteration % 1000000 == 0 {
-                debug!("iteration {}", iteration);
-                debug!(
-                    "Average number of UMIs per alignment position: {}",
-                    self.total_umi_count as f64 / align_pos_count as f64
-                );
-                debug!(
-                    "Max number of UMIs over all alignment positions: {}",
-                    self.max_umi_count
-                );
-                debug!("Dedup count: {}", self.deduped_count);
-            }
-
             let mut data: Box<dyn DataStruct> = Box::new(Naive::new());
             let mut curr_trakcer = ClusterTracker::new(args.track_clusters);
 
-            for read_freq in umi_reads.values() {
-                if read_freq
-                    .read
-                    .downcast_ref::<UcSAMRead>()
-                    .unwrap()
-                    .to_sam_record()
-                    .is_secondary()
-                {
-                    secondary_count_1 += 1;
-                } else {
-                    primary_count_1 += 1;
-                }
-            }
-
             // TODO: Currently use directional only.
-            let dedupped = Adjacency::apply(
+            let dedupped = Directional::apply(
                 umi_reads,
                 &mut data,
                 &mut curr_trakcer,
                 self.umi_length,
                 args.k,
                 args.percentage,
-                &mut primary_count_2,
-                &mut secondary_count_2,
             );
 
             curr_trakcer.set_offset(self.deduped_count);
@@ -302,19 +264,6 @@ impl DeduplicateSAM {
 
         writer.close();
 
-        debug!(
-            "primary_count_1: {}, secondary_count_1: {}",
-            primary_count_1, secondary_count_1
-        );
-
-        debug!(
-            "primary_count_2: {}, secondary_count_2: {}",
-            primary_count_2, secondary_count_2
-        );
-        debug!(
-            "primary_count: {}, secondary_count: {}",
-            writer.primary_count, writer.secondary_count
-        );
         debug!("Number of input reads: {}", self.total_read_count);
         debug!("Number of removed unmapped reads: {}", self.unmapped);
         if args.paired {
@@ -423,8 +372,6 @@ struct UcWriter {
     ref_str: Option<Vec<u8>>,
     set: HashSet<ReverseRead>,
     header_view: HeaderView,
-    pub primary_count: i32,
-    pub secondary_count: i32,
 }
 
 impl UcWriter {
@@ -456,8 +403,6 @@ impl UcWriter {
             writer,
             paired,
             ref_str: None,
-            primary_count: 0,
-            secondary_count: 0,
         }
     }
 
@@ -479,12 +424,6 @@ impl UcWriter {
                     record.mpos(),
                 ));
             }
-        }
-
-        if record.is_secondary() {
-            self.secondary_count += 1;
-        } else {
-            self.primary_count += 1;
         }
 
         self.writer
@@ -532,11 +471,6 @@ impl UcWriter {
                 );
 
                 if self.set.contains(&rev_read) {
-                    if record.is_secondary() {
-                        self.secondary_count += 1;
-                    } else {
-                        self.primary_count += 1;
-                    }
                     // Write reversed read while preserving flags
                     self.writer
                         .write(&record)

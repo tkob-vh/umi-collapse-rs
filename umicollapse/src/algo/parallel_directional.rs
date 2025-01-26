@@ -15,7 +15,7 @@ impl ParallelDirectional {
     #[allow(dead_code)]
     fn visit_and_remove(
         u: &BitSet,
-        reads: &HashMap<BitSet, ReadFreq>,
+        _reads: &HashMap<BitSet, ReadFreq>,
         adj: &HashMap<BitSet, HashSet<BitSet>>,
         visited: &mut HashSet<BitSet>,
     ) {
@@ -31,7 +31,7 @@ impl ParallelDirectional {
                 continue;
             }
 
-            ParallelDirectional::visit_and_remove(v, reads, adj, visited);
+            ParallelDirectional::visit_and_remove(v, _reads, adj, visited);
         }
     }
 }

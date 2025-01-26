@@ -35,8 +35,6 @@ fn main() {
         }
     }
 
-    // todo!("processing of '-t' and '-T'");
-
     if args.track_clusters && args.two_pass {
         panic!("Cannot track clusters with the two pass algorithm!");
     }
