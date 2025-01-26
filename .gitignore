@@ -1,6 +1,7 @@
 output/
 profiling_results/
-data/
+/data/
 .cache/
 compile_commands.json
 .vscode/
+workspace/
