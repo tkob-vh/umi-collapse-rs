@@ -52,7 +52,7 @@ fn main() {
         if args.two_pass {
             // TODO: to be finished.
         } else {
-            dedup.deduplicate_and_merge(&args);
+            dedup.deduplicate_and_merge(&args, &start_time);
         }
     }
 
