@@ -4,9 +4,10 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use rust_htslib::bam::{Format, Header, HeaderView, Read, Reader, Record};
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::algo::adjacency::Adjacency;
 use crate::algo::directional::Directional;
@@ -51,7 +52,7 @@ impl DeduplicateSAM {
         }
     }
 
-    pub fn deduplicate_and_merge(&mut self, args: &Cli) {
+    pub fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         let _algo: Box<dyn Algo> = if !args.para_data {
             if args.algo_str.eq("dir") {
                 Box::new(Directional::new())
@@ -199,6 +200,15 @@ impl DeduplicateSAM {
                 }
             }
         }
+        let mid_time = SystemTime::now();
+
+        info!(
+            "UMI collapsing finished in {:?} seconds",
+            mid_time
+                .duration_since(start_time.clone())
+                .unwrap()
+                .as_secs_f32()
+        );
 
         // debug!("Number of input reads: {}", self.total_read_count);
         // debug!("Number of removed unmapped reads: {}", self.unmapped);
