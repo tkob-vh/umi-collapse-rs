@@ -2,7 +2,7 @@ use std::time::SystemTime;
 
 use clap::Parser;
 use deduplicate_sam::DeduplicateSAM;
-use tracing::{debug, info};
+use tracing::info;
 
 mod algo;
 mod cli;
@@ -22,7 +22,7 @@ fn main() {
         .init();
 
     let mut args = cli::Cli::parse();
-    debug!("Arguments: {:?}", &args);
+    info!("Arguments: {:?}", &args);
 
     let start_time = SystemTime::now();
 

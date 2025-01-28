@@ -6,7 +6,8 @@ use std::{collections::HashMap, fmt::Debug};
 
 use downcast_rs::{impl_downcast, Downcast};
 use lazy_static::lazy_static;
-use regex::{Regex, RegexBuilder};
+use pcre2::bytes::{Regex, RegexBuilder};
+use tracing::info;
 
 use crate::utils;
 
@@ -66,12 +67,12 @@ impl UcSAMRead {
     pub fn umi_pattern(sep: &str) -> Regex {
         // Add debug logging
         let pattern = format!(r"^(?:.*?){}([ATCGN]+)(?:.*?)$", sep);
-        println!("UMI pattern: {}", pattern);
+        info!("UMI pattern: {}", pattern);
 
-        RegexBuilder::new(&pattern)
-            .case_insensitive(true)
+        RegexBuilder::new()
+            .caseless(true)
             .multi_line(false)
-            .build()
+            .build(&pattern)
             .expect("Failed to build UMI pattern regex")
     }
 
@@ -86,32 +87,31 @@ impl UcSAMRead {
 
 impl UcRead for UcSAMRead {
     fn get_umi_length(&self, pattern: &Regex) -> usize {
-        let read_name = String::from_utf8(self.record.qname().to_vec()).unwrap();
-        let caps = pattern.captures(&read_name).unwrap();
+        let read_name = self.record.qname();
+        let caps = pattern.captures(read_name).unwrap().unwrap();
         caps.get(1)
             .expect("No UMI group found in pattern match")
-            .as_str()
+            .as_bytes()
             .len()
     }
 
     fn get_umi(&self, pattern: &Regex) -> utils::bitset::BitSet {
-        let read_name =
-            String::from_utf8(self.record.qname().to_vec()).expect("Invalid UTF-8 in read name");
+        let read_name = self.record.qname();
 
         let caps = pattern
-            .captures(&read_name)
+            .captures(read_name)
             .expect("No UMI pattern match found in read name");
 
         let umi = caps
+            .unwrap()
             .get(1)
             .expect("No UMI group found in pattern match")
-            .as_str()
-            .to_uppercase();
+            .as_bytes();
 
         if umi.is_empty() {
             panic!("Empty UMI sequence extracted");
         }
-        utils::to_bitset(&umi)
+        utils::to_bitset(std::str::from_utf8(umi).unwrap())
     }
 
     fn get_avg_qual(&self) -> i32 {
