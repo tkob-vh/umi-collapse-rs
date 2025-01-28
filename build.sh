@@ -9,7 +9,7 @@ set -euo pipefail
 
 echo "================= Debug Info ================="
 echo "Job Owner: $(whoami)"
-echo "Job Nodelist: ${SLURM_JOB_NODELIST:-{'not a slurm job'}"
+echo "Job Nodelist: ${SLURM_JOB_NODELIST:-'Not a slurm job'}"
 echo "Job Date: $(date)"
 echo "Current Branch: $(git rev-parse --abbrev-ref HEAD)"
 echo "Current Commit ID: $(git rev-parse HEAD)"
