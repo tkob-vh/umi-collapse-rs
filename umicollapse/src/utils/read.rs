@@ -65,11 +65,12 @@ impl UcSAMRead {
 
     pub fn umi_pattern(sep: &str) -> Regex {
         // Add debug logging
-        let pattern = format!(r"^(.*){}([ATCGN]+)(.*?)$", sep);
+        let pattern = format!(r"^(?:.*?){}([ATCGN]+)(?:.*?)$", sep);
         println!("UMI pattern: {}", pattern);
 
         RegexBuilder::new(&pattern)
             .case_insensitive(true)
+            .multi_line(false)
             .build()
             .expect("Failed to build UMI pattern regex")
     }
@@ -87,7 +88,10 @@ impl UcRead for UcSAMRead {
     fn get_umi_length(&self, pattern: &Regex) -> usize {
         let read_name = String::from_utf8(self.record.qname().to_vec()).unwrap();
         let caps = pattern.captures(&read_name).unwrap();
-        caps.get(2).unwrap().as_str().len()
+        caps.get(1)
+            .expect("No UMI group found in pattern match")
+            .as_str()
+            .len()
     }
 
     fn get_umi(&self, pattern: &Regex) -> utils::bitset::BitSet {
@@ -99,7 +103,7 @@ impl UcRead for UcSAMRead {
             .expect("No UMI pattern match found in read name");
 
         let umi = caps
-            .get(2)
+            .get(1)
             .expect("No UMI group found in pattern match")
             .as_str()
             .to_uppercase();
