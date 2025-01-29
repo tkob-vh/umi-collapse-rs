@@ -1,9 +1,11 @@
 //! The core logic.
 
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicI32, AtomicUsize, Ordering},
+    Arc,
+};
 use std::time::SystemTime;
 
 use rust_htslib::bam::{Format, Header, HeaderView, Read, Reader, Record};
@@ -28,27 +30,27 @@ use crate::utils::{
 };
 
 pub struct DeduplicateSAM {
-    total_umi_count: usize,
-    max_umi_count: usize,
-    deduped_count: usize,
-    umi_length: usize,
-    total_read_count: i32,
-    unmapped: i32,
-    unpaired: i32,
-    chimeric: i32,
+    total_umi_count: AtomicUsize,
+    max_umi_count: AtomicUsize,
+    deduped_count: AtomicUsize,
+    umi_length: AtomicUsize,
+    total_read_count: AtomicI32,
+    unmapped: AtomicI32,
+    unpaired: AtomicI32,
+    chimeric: AtomicI32,
 }
 
 impl DeduplicateSAM {
     pub fn new(args: &Cli) -> Self {
         Self {
-            total_umi_count: 0,
-            max_umi_count: 0,
-            deduped_count: 0,
-            umi_length: args.umi_length,
-            total_read_count: 0,
-            unpaired: 0,
-            unmapped: 0,
-            chimeric: 0,
+            total_umi_count: AtomicUsize::new(0),
+            max_umi_count: AtomicUsize::new(0),
+            deduped_count: AtomicUsize::new(0),
+            umi_length: AtomicUsize::new(args.umi_length),
+            total_read_count: AtomicI32::new(0),
+            unpaired: AtomicI32::new(0),
+            unmapped: AtomicI32::new(0),
+            chimeric: AtomicI32::new(0),
         }
     }
 
@@ -105,10 +107,10 @@ impl DeduplicateSAM {
                 continue;
             }
 
-            self.total_read_count += 1;
+            self.total_read_count.fetch_add(1, Ordering::Relaxed);
 
             if record.is_unmapped() {
-                self.unmapped += 1;
+                self.unmapped.fetch_add(1, Ordering::Relaxed);
                 if args.keep_unmapped {
                     writer.write(&record).expect("Failed to write the record");
                 }
@@ -117,19 +119,19 @@ impl DeduplicateSAM {
 
             if args.paired {
                 if !record.is_paired() {
-                    self.unpaired += 1;
+                    self.unpaired.fetch_add(1, Ordering::Relaxed);
                     if args.remove_unpaired {
                         continue;
                     }
                 }
 
                 if record.is_paired() && record.is_mate_unmapped() {
-                    self.unmapped += 1;
+                    self.unmapped.fetch_add(1, Ordering::Relaxed);
                     continue;
                 }
 
                 if record.is_paired() && !record.tid().eq(&record.mtid()) {
-                    self.chimeric += 1;
+                    self.chimeric.fetch_add(1, Ordering::Relaxed);
                     if args.remove_chimeric {
                         continue;
                     }
@@ -168,8 +170,9 @@ impl DeduplicateSAM {
             let read = Arc::new(UcSAMRead::new(record.clone().into()));
             let umi = Arc::new(read.get_umi(&regex));
 
-            if self.umi_length == 0 {
-                self.umi_length = read.get_umi_length(&regex);
+            if self.umi_length.load(Ordering::Relaxed) == 0 {
+                self.umi_length
+                    .store(read.get_umi_length(&regex), Ordering::Relaxed);
             }
 
             match umi_reads.entry(umi.clone()) {
@@ -224,16 +227,21 @@ impl DeduplicateSAM {
                 umi_reads,
                 &mut data,
                 &mut curr_trakcer,
-                self.umi_length,
+                self.umi_length.load(Ordering::Relaxed),
                 args.k,
                 args.percentage,
             );
 
-            curr_trakcer.set_offset(self.deduped_count);
+            curr_trakcer.set_offset(self.deduped_count.load(Ordering::Relaxed));
 
-            self.total_umi_count += umi_reads.len();
-            self.max_umi_count = std::cmp::max(self.max_umi_count, umi_reads.len());
-            self.deduped_count += dedupped.len();
+            self.total_umi_count
+                .fetch_add(umi_reads.len(), Ordering::Relaxed);
+            self.max_umi_count.store(
+                std::cmp::max(self.max_umi_count.load(Ordering::Relaxed), umi_reads.len()),
+                Ordering::Relaxed,
+            );
+            self.deduped_count
+                .fetch_add(dedupped.len(), Ordering::Relaxed);
 
             if args.track_clusters {
                 cluster_trackers
@@ -257,30 +265,48 @@ impl DeduplicateSAM {
 
         writer.close();
 
-        debug!("Number of input reads: {}", self.total_read_count);
-        debug!("Number of removed unmapped reads: {}", self.unmapped);
+        debug!(
+            "Number of input reads: {}",
+            self.total_read_count.load(Ordering::Relaxed)
+        );
+        debug!(
+            "Number of removed unmapped reads: {}",
+            self.unmapped.load(Ordering::Relaxed)
+        );
         if args.paired {
-            debug!("Number of unpaired reads: {}", self.unpaired);
-            debug!("Number of chimeric reads: {}", self.chimeric);
+            debug!(
+                "Number of unpaired reads: {}",
+                self.unpaired.load(Ordering::Relaxed)
+            );
+            debug!(
+                "Number of chimeric reads: {}",
+                self.chimeric.load(Ordering::Relaxed)
+            );
         }
 
         debug!("Number of unique alignment positions: {}", align_pos_count);
-        debug!("Number of UMIs: {}", self.total_umi_count);
+        debug!(
+            "Number of UMIs: {}",
+            self.total_umi_count.load(Ordering::Relaxed)
+        );
         debug!(
             "Average number of UMIs per alignment position: {}",
-            self.total_umi_count as f64 / align_pos_count as f64
+            self.total_umi_count.load(Ordering::Relaxed) as f64 / align_pos_count as f64
         );
         debug!(
             "Max number of UMIs over all alignment positions: {}",
-            self.max_umi_count
+            self.max_umi_count.load(Ordering::Relaxed)
         );
 
         if args.track_clusters {
-            debug!("Number of groups of reads: {}", self.deduped_count);
+            debug!(
+                "Number of groups of reads: {}",
+                self.deduped_count.load(Ordering::Relaxed)
+            );
         } else {
             debug!(
                 "Number of reads after deduplicating: {}",
-                self.deduped_count
+                self.deduped_count.load(Ordering::Relaxed)
             );
         }
     }
@@ -343,7 +369,7 @@ impl Hash for ReverseRead {
 }
 
 impl Ord for ReverseRead {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // 按照Java版本相同的比较优先级
         self.coord
             .cmp(&other.coord)
@@ -353,7 +379,7 @@ impl Ord for ReverseRead {
 }
 
 impl PartialOrd for ReverseRead {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
@@ -543,7 +569,7 @@ impl Hash for Alignment {
 }
 
 impl Ord for Alignment {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // 按照Java版本相同的比较优先级
         self.strand
             .cmp(&other.strand)
@@ -553,7 +579,7 @@ impl Ord for Alignment {
 }
 
 impl PartialOrd for Alignment {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
