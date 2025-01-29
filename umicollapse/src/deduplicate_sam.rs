@@ -53,47 +53,30 @@ impl DeduplicateSAM {
     }
 
     pub fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
-        let _algo: Box<dyn Algo> = if !args.para_data {
-            if args.algo_str.eq("dir") {
-                Box::new(Directional::new())
-            } else if args.algo_str.eq("adj") {
-                Box::new(Adjacency::new())
-            } else {
-                panic!("Invalid algorithm");
-            }
-        } else {
-            if args.algo_str.eq("dir") {
-                Box::new(ParallelDirectional::new())
-            } else if args.algo_str.eq("adj") {
-                Box::new(ParallelAdjacency::new())
-            } else {
-                panic!("Invalid algorithm");
-            }
+        // Only implemented the directional algorithm for now.
+        let _algo: Box<dyn Algo> = match (&args.para_data, args.algo_str.as_str()) {
+            (false, "dir") => Box::new(Directional::new()),
+            (false, "adj") => Box::new(Adjacency::new()),
+            (true, "dir") => Box::new(ParallelDirectional::new()),
+            (true, "adj") => Box::new(ParallelAdjacency::new()),
+            _ => panic!("Invalid algorithm: {}", &args.algo_str),
         };
 
-        let _data: Box<dyn Data> = if !args.para_data {
-            if args.data_str.eq("naive") {
-                Box::new(Naive::new())
-            } else {
-                panic!("Invalid Data Structure");
-            }
-        } else {
-            if args.data_str.eq("naive") {
-                Box::new(ParallelNaive::new())
-            } else {
-                panic!("Invalid Data Structure");
-            }
+        // Only implemented the Naive data structure for now.
+        let _data: Box<dyn Data> = match (&args.para_data, args.algo_str.as_str()) {
+            (false, "naive") => Box::new(Naive::new()),
+            (true, "naive") => Box::new(ParallelNaive::new()),
+            _ => panic!("Invalid data structure: {}", &args.algo_str),
         };
 
-        let merge_str = args.merge_str.as_ref().unwrap().to_owned();
-        let merge_algo: Box<dyn Merge> = if merge_str.eq("any") {
-            Box::new(AnyMerge::new())
-        } else if merge_str.eq("avgqual") {
-            Box::new(AvgQualMerge::new())
-        } else if merge_str.eq("mapqual") {
-            Box::new(MapQualMerge::new())
-        } else {
-            panic!("Invalid merge algorithm");
+        let merge_algo: Box<dyn Merge> = match args.merge_str.as_ref().unwrap().as_str() {
+            "any" => Box::new(AnyMerge::new()),
+            "avgqual" => Box::new(AvgQualMerge::new()),
+            "mapqual" => Box::new(MapQualMerge::new()),
+            _ => panic!(
+                "Invalid merge algorithm: {}",
+                args.merge_str.as_ref().unwrap()
+            ),
         };
 
         // Set default umi pattern
