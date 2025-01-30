@@ -65,7 +65,7 @@ impl DeduplicateSAM {
         };
 
         // Only implemented the Naive data structure for now.
-        let _data: Box<dyn Data> = match (&args.para_data, args.algo_str.as_str()) {
+        let _data: Box<dyn Data> = match (&args.para_data, args.data_str.as_str()) {
             (false, "naive") => Box::new(Naive::new()),
             (true, "naive") => Box::new(ParallelNaive::new()),
             _ => panic!("Invalid data structure: {}", &args.algo_str),
