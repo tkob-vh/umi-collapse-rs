@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::utils::{bitset::BitSet, umi_freq::UmiFreq};
 
@@ -18,15 +18,15 @@ impl Algorithm for Adjacency {
     fn apply(
         &self,
         reads: &std::collections::HashMap<
-            Arc<crate::utils::bitset::BitSet>,
-            Arc<crate::utils::read_freq::ReadFreq>,
+            Rc<crate::utils::bitset::BitSet>,
+            Rc<crate::utils::read_freq::ReadFreq>,
         >,
         data: &mut Box<dyn crate::data::DataStruct>,
         tracker: &mut crate::utils::cluster_tracker::ClusterTracker,
         umi_length: usize,
         k: i32,
         percentage: f32,
-    ) -> Vec<std::sync::Arc<dyn crate::utils::read::UcRead>> {
+    ) -> Vec<Rc<dyn crate::utils::read::UcRead>> {
         let mut freq: Vec<UmiFreq> = reads
             .iter()
             .map(|(umi, rf)| UmiFreq::new(umi.clone(), rf.clone()))
@@ -34,13 +34,13 @@ impl Algorithm for Adjacency {
 
         freq.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
 
-        let m: HashMap<Arc<BitSet>, i32> = reads
+        let m: HashMap<Rc<BitSet>, i32> = reads
             .iter()
             .map(|(umi, rf)| (umi.clone(), rf.freq))
             .collect();
 
         data.change(m, umi_length, k);
-        let mut res: Vec<Arc<dyn crate::utils::read::UcRead>> = Vec::new();
+        let mut res: Vec<Rc<dyn crate::utils::read::UcRead>> = Vec::new();
 
         for entry in freq {
             let umi = entry.umi;

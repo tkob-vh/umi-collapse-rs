@@ -1,7 +1,5 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use crate::utils;
 
@@ -9,13 +7,13 @@ use super::bitset::BitSet;
 
 #[allow(dead_code)]
 pub struct ClusterStats {
-    umi: Arc<BitSet>,
+    umi: Rc<BitSet>,
     freq: i32,
-    read: Arc<dyn utils::read::UcRead>,
+    read: Rc<dyn utils::read::UcRead>,
 }
 
 impl ClusterStats {
-    pub fn new(umi: Arc<BitSet>, freq: i32, read: Arc<dyn utils::read::UcRead>) -> Self {
+    pub fn new(umi: Rc<BitSet>, freq: i32, read: Rc<dyn utils::read::UcRead>) -> Self {
         Self { umi, freq, read }
     }
 
@@ -30,7 +28,7 @@ impl ClusterStats {
     }
 
     #[allow(dead_code)]
-    pub fn get_read(&self) -> &Arc<dyn utils::read::UcRead> {
+    pub fn get_read(&self) -> &Rc<dyn utils::read::UcRead> {
         &self.read
     }
 }
@@ -38,9 +36,9 @@ impl ClusterStats {
 pub struct ClusterTracker {
     track: bool,
     offset: usize,
-    temp: Vec<Arc<BitSet>>,
+    temp: Vec<Rc<BitSet>>,
     temp_freq: i32,
-    to_unique_idx: HashMap<Arc<BitSet>, usize>,
+    to_unique_idx: HashMap<Rc<BitSet>, usize>,
     clusters: Vec<ClusterStats>,
     idx: usize,
 }
@@ -74,8 +72,8 @@ impl ClusterTracker {
 
     pub fn add_all(
         &mut self,
-        s: &HashSet<Arc<BitSet>>,
-        reads: &HashMap<Arc<BitSet>, Arc<utils::read_freq::ReadFreq>>,
+        s: &HashSet<Rc<BitSet>>,
+        reads: &HashMap<Rc<BitSet>, Rc<utils::read_freq::ReadFreq>>,
     ) {
         if self.track {
             self.temp.extend(s.iter().cloned());
@@ -86,7 +84,7 @@ impl ClusterTracker {
         }
     }
 
-    pub fn track(&mut self, unique: Arc<BitSet>, read: &Arc<dyn utils::read::UcRead>) {
+    pub fn track(&mut self, unique: Rc<BitSet>, read: &Rc<dyn utils::read::UcRead>) {
         if self.track {
             for s in &self.temp {
                 self.to_unique_idx.insert(s.to_owned(), self.idx);

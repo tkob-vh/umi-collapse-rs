@@ -1,4 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::{
     data::DataStruct,
@@ -17,8 +18,8 @@ impl Directional {
     }
 
     fn visit_and_remove(
-        start_umi: Arc<BitSet>,
-        reads: &HashMap<Arc<BitSet>, Arc<ReadFreq>>,
+        start_umi: Rc<BitSet>,
+        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
         data: &mut Box<dyn DataStruct>,
         tracker: &mut ClusterTracker,
         k: i32,
@@ -45,14 +46,14 @@ impl Directional {
 impl Algorithm for Directional {
     fn apply(
         &self,
-        reads: &HashMap<Arc<BitSet>, Arc<ReadFreq>>,
+        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
         data: &mut Box<dyn DataStruct>,
         tracker: &mut ClusterTracker,
         umi_length: usize,
         k: i32,
         percentage: f32,
-    ) -> Vec<Arc<dyn crate::utils::read::UcRead>> {
-        let m: HashMap<Arc<BitSet>, i32> = reads
+    ) -> Vec<Rc<dyn crate::utils::read::UcRead>> {
+        let m: HashMap<Rc<BitSet>, i32> = reads
             .iter()
             .map(|(umi, rf)| (umi.clone(), rf.freq))
             .collect();
@@ -66,7 +67,7 @@ impl Algorithm for Directional {
 
         data.change(m, umi_length, k);
 
-        let mut res: Vec<Arc<dyn crate::utils::read::UcRead>> = Vec::new();
+        let mut res: Vec<Rc<dyn crate::utils::read::UcRead>> = Vec::new();
 
         for entry in freq {
             let umi = entry.umi;
