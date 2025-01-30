@@ -1,7 +1,7 @@
 //! We use `UcRead` and `UcSAMRead` to distinguish them from the structs in rust-htslib.
 //! Uc stands for umi-collapse.
 
-use std::sync::Arc;
+use std::rc::Rc;
 use std::{collections::HashMap, fmt::Debug};
 
 use downcast_rs::{impl_downcast, Downcast};
@@ -50,12 +50,12 @@ impl_downcast!(UcRead);
 
 #[derive(Debug)]
 pub struct UcSAMRead {
-    record: Arc<rust_htslib::bam::Record>,
+    record: Rc<rust_htslib::bam::Record>,
     avg_qual: i32,
 }
 
 impl UcSAMRead {
-    pub fn new(record: Arc<rust_htslib::bam::Record>) -> Self {
+    pub fn new(record: Rc<rust_htslib::bam::Record>) -> Self {
         let avg: f32 = record.qual().iter().map(|&b| b as f32).sum();
 
         Self {
@@ -80,7 +80,7 @@ impl UcSAMRead {
         self.record.mapq() as i32
     }
 
-    pub fn to_sam_record(&self) -> Arc<rust_htslib::bam::Record> {
+    pub fn to_sam_record(&self) -> Rc<rust_htslib::bam::Record> {
         self.record.clone()
     }
 }

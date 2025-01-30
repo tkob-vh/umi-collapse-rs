@@ -1,14 +1,14 @@
 //! `Naive` data structure.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::utils::{bitset::BitSet, umi_dist};
 
 use super::DataStruct;
 
 pub struct Naive {
-    umi_freq: HashMap<Arc<BitSet>, i32>,
+    umi_freq: HashMap<Rc<BitSet>, i32>,
 }
 
 impl Naive {
@@ -21,14 +21,14 @@ impl Naive {
 
 impl DataStruct for Naive {
     #[allow(unused_variables)]
-    fn change(&mut self, umi_freq: HashMap<Arc<BitSet>, i32>, umi_length: usize, max_edits: i32) {
+    fn change(&mut self, umi_freq: HashMap<Rc<BitSet>, i32>, umi_length: usize, max_edits: i32) {
         self.umi_freq = umi_freq;
     }
-    fn remove_near(&mut self, umi: &BitSet, k: i32, max_freq: i32) -> HashSet<Arc<BitSet>> {
-        let mut res: HashSet<Arc<BitSet>> = HashSet::new();
+    fn remove_near(&mut self, umi: &BitSet, k: i32, max_freq: i32) -> HashSet<Rc<BitSet>> {
+        let mut res: HashSet<Rc<BitSet>> = HashSet::new();
 
         // 创建一个要删除的key的列表
-        let to_remove: Vec<Arc<BitSet>> = self
+        let to_remove: Vec<Rc<BitSet>> = self
             .umi_freq
             .iter()
             .filter(|(o, &f)| {
@@ -47,8 +47,8 @@ impl DataStruct for Naive {
         res
     }
 
-    // fn remove_near(&mut self, umi: &BitSet, k: i32, max_freq: i32) -> HashSet<Arc<BitSet>> {
-    //     let mut res: HashSet<Arc<BitSet>> = HashSet::new();
+    // fn remove_near(&mut self, umi: &BitSet, k: i32, max_freq: i32) -> HashSet<Rc<BitSet>> {
+    //     let mut res: HashSet<Rc<BitSet>> = HashSet::new();
     //     let umi_freq = &mut self.umi_freq;
     //     umi_freq.retain(|o, &mut f| {
     //         let dist: i32 = umi_dist(umi, o);

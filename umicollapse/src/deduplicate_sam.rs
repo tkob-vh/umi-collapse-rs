@@ -2,10 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::sync::{
-    atomic::{AtomicI32, AtomicUsize, Ordering},
-    Arc,
-};
+use std::rc::Rc;
+use std::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
 use std::time::SystemTime;
 
 use rust_htslib::bam::{Format, Header, HeaderView, Read, Reader, Record};
@@ -76,7 +74,7 @@ impl DeduplicateSAM {
         let mut writer: UcWriter =
             UcWriter::new(&args.input, &args.output, &reader, args.paired, args);
 
-        let mut align: HashMap<Arc<Align>, HashMap<Arc<BitSet>, Arc<ReadFreq>>> =
+        let mut align: HashMap<Rc<Align>, HashMap<Rc<BitSet>, Rc<ReadFreq>>> =
             HashMap::with_capacity(1 << 20);
 
         let mut record = Record::new();
@@ -125,15 +123,15 @@ impl DeduplicateSAM {
                 get_unclipped_start(&record)
             };
 
-            let alignment: Arc<Align> = if args.paired {
-                Arc::new(Align::Paired(PairedAlignment::new(
+            let alignment: Rc<Align> = if args.paired {
+                Rc::new(Align::Paired(PairedAlignment::new(
                     record.is_reverse(),
                     unclipped_pos,
                     reader.header().tid2name(record.tid() as u32).to_vec(),
                     record.insert_size(),
                 )))
             } else {
-                Arc::new(Align::Unpaired(Alignment::new(
+                Rc::new(Align::Unpaired(Alignment::new(
                     record.is_reverse(),
                     unclipped_pos,
                     reader.header().tid2name(record.tid() as u32).to_vec(),
@@ -148,8 +146,8 @@ impl DeduplicateSAM {
                 .get_mut(&alignment)
                 .expect("Failed to find the alignment");
 
-            let read = Arc::new(UcSAMRead::new(record.clone().into()));
-            let umi = Arc::new(read.get_umi(&regex));
+            let read = Rc::new(UcSAMRead::new(record.clone().into()));
+            let umi = Rc::new(read.get_umi(&regex));
 
             if self.umi_length.load(Ordering::Relaxed) == 0 {
                 self.umi_length
@@ -158,12 +156,12 @@ impl DeduplicateSAM {
 
             match umi_reads.entry(umi.clone()) {
                 std::collections::hash_map::Entry::Vacant(e) => {
-                    e.insert(Arc::new(ReadFreq::new(read.clone(), 1)));
+                    e.insert(Rc::new(ReadFreq::new(read.clone(), 1)));
                 }
                 std::collections::hash_map::Entry::Occupied(mut e) => {
                     let merged_read = merge_algo.merge(read.clone(), e.get().read.clone());
                     let new_freq = e.get().freq + 1;
-                    e.insert(Arc::new(ReadFreq::new(merged_read, new_freq)));
+                    e.insert(Rc::new(ReadFreq::new(merged_read, new_freq)));
                 }
             }
         }
@@ -171,10 +169,7 @@ impl DeduplicateSAM {
 
         info!(
             "UMI collapsing reading finished in {:?} seconds",
-            mid_time
-                .duration_since(start_time.clone())
-                .unwrap()
-                .as_secs_f32()
+            mid_time.duration_since(*start_time).unwrap().as_secs_f32()
         );
 
         // debug!("Number of input reads: {}", self.total_read_count);
@@ -198,7 +193,7 @@ impl DeduplicateSAM {
             _ => panic!("Invalid algorithm: {}", &args.algo_str),
         };
 
-        let mut cluster_trackers: Option<HashMap<Arc<Align>, ClusterTracker>> =
+        let mut cluster_trackers: Option<HashMap<Rc<Align>, ClusterTracker>> =
             if args.track_clusters {
                 Some(HashMap::new())
             } else {
