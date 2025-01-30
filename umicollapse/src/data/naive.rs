@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::utils::{bitset::BitSet, umi_dist};
 
-use super::{Data, DataStruct};
+use super::DataStruct;
 
 pub struct Naive {
     umi_freq: HashMap<Arc<BitSet>, i32>,
@@ -18,8 +18,6 @@ impl Naive {
         }
     }
 }
-
-impl Data for Naive {}
 
 impl DataStruct for Naive {
     #[allow(unused_variables)]

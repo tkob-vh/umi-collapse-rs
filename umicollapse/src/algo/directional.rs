@@ -7,7 +7,7 @@ use crate::{
     },
 };
 
-use super::{Algo, Algorithm};
+use super::Algorithm;
 
 pub struct Directional {}
 
@@ -42,10 +42,9 @@ impl Directional {
     }
 }
 
-impl Algo for Directional {}
-
 impl Algorithm for Directional {
     fn apply(
+        &self,
         reads: &HashMap<Arc<BitSet>, Arc<ReadFreq>>,
         data: &mut Box<dyn DataStruct>,
         tracker: &mut ClusterTracker,
