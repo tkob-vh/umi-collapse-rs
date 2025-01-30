@@ -38,9 +38,7 @@ fn main() {
     if args.track_clusters && args.two_pass {
         panic!("Cannot track clusters with the two pass algorithm!");
     }
-    if args.paired && args.para_align {
-        panic!("Cannot process paired-end reads in parallel!");
-    }
+
     if args.paired && args.keep_unmapped {
         panic!("Cannot keep unmapped reads with paired-end reads!");
     }

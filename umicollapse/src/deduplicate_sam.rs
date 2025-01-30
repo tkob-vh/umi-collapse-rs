@@ -13,13 +13,10 @@ use tracing::{debug, info};
 
 use crate::algo::adjacency::Adjacency;
 use crate::algo::directional::Directional;
-use crate::algo::parallel_adjacency::ParallelAdjacency;
-use crate::algo::parallel_directional::ParallelDirectional;
-use crate::algo::{Algo, Algorithm};
+use crate::algo::Algorithm;
 use crate::cli::Cli;
 use crate::data::naive::Naive;
-use crate::data::parallel_naive::ParallelNaive;
-use crate::data::{Data, DataStruct};
+use crate::data::DataStruct;
 use crate::merge::{AnyMerge, AvgQualMerge, MapQualMerge, Merge};
 use crate::utils::cluster_tracker::ClusterTracker;
 use crate::utils::{
@@ -55,22 +52,6 @@ impl DeduplicateSAM {
     }
 
     pub fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
-        // Only implemented the directional algorithm for now.
-        let _algo: Box<dyn Algo> = match (&args.para_data, args.algo_str.as_str()) {
-            (false, "dir") => Box::new(Directional::new()),
-            (false, "adj") => Box::new(Adjacency::new()),
-            (true, "dir") => Box::new(ParallelDirectional::new()),
-            (true, "adj") => Box::new(ParallelAdjacency::new()),
-            _ => panic!("Invalid algorithm: {}", &args.algo_str),
-        };
-
-        // Only implemented the Naive data structure for now.
-        let _data: Box<dyn Data> = match (&args.para_data, args.data_str.as_str()) {
-            (false, "naive") => Box::new(Naive::new()),
-            (true, "naive") => Box::new(ParallelNaive::new()),
-            _ => panic!("Invalid data structure: {}", &args.algo_str),
-        };
-
         let merge_algo: Box<dyn Merge> = match args.merge_str.as_ref().unwrap().as_str() {
             "any" => Box::new(AnyMerge::new()),
             "avgqual" => Box::new(AvgQualMerge::new()),
@@ -189,7 +170,7 @@ impl DeduplicateSAM {
         let mid_time = SystemTime::now();
 
         info!(
-            "UMI collapsing finished in {:?} seconds",
+            "UMI collapsing reading finished in {:?} seconds",
             mid_time
                 .duration_since(start_time.clone())
                 .unwrap()
@@ -211,6 +192,12 @@ impl DeduplicateSAM {
 
         let align_pos_count: usize = align.len();
 
+        let algo: Box<dyn Algorithm> = match args.algo_str.as_str() {
+            "dir" => Box::new(Directional::new()),
+            "adj" => Box::new(Adjacency::new()),
+            _ => panic!("Invalid algorithm: {}", &args.algo_str),
+        };
+
         let mut cluster_trackers: Option<HashMap<Arc<Align>, ClusterTracker>> =
             if args.track_clusters {
                 Some(HashMap::new())
@@ -219,11 +206,15 @@ impl DeduplicateSAM {
             };
 
         for (alignment, umi_reads) in align.iter() {
-            let mut data: Box<dyn DataStruct> = Box::new(Naive::new());
+            let mut data: Box<dyn DataStruct> = match args.data_str.as_str() {
+                "naive" => Box::new(Naive::new()),
+                _ => panic!("Invalid data structure: {}", &args.algo_str),
+            };
+
             let mut curr_trakcer = ClusterTracker::new(args.track_clusters);
 
             // TODO: Currently use directional only.
-            let dedupped = Directional::apply(
+            let dedupped = algo.apply(
                 umi_reads,
                 &mut data,
                 &mut curr_trakcer,

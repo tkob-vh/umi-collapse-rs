@@ -24,14 +24,7 @@ pub struct Cli {
     /// Threshold percentage for identifying adjacent UMIs in the directional algorithm. Default: 0.5.
     #[arg(short = 'p', default_value_t = 0.5)]
     pub percentage: f32,
-    /// Parallelize the deduplication of each separate alignment position. Using this is discouraged as it is lacking many features. Default: false.
-    #[arg(short = 't', default_value_t = false)]
-    pub para_align: bool,
-    /// Parallelize the deduplication of one single alignment position. The data structure can
-    /// only be naive, bktree, and fenwickbktree. Using this is discouraged as it is lacking many features. Default: false.
-    #[arg(short = 'T', default_value_t = false)]
-    pub para_data: bool,
-    /// Number of threads.
+    /// Number of threads used in reader/writer.
     #[arg[long = "num-threads", default_value_t = 1]]
     pub num_threads: usize,
     /// Separator string between the UMI and the rest of the read header. Default: _

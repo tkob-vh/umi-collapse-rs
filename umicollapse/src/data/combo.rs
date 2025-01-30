@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::utils::{bitset::BitSet, char_equals, char_set};
 
-use super::{Data, DataStruct};
+use super::DataStruct;
 
 pub struct Combo {
     umi_freq: HashMap<Arc<BitSet>, i32>,
@@ -68,8 +68,6 @@ impl Combo {
         }
     }
 }
-
-impl Data for Combo {}
 
 impl DataStruct for Combo {
     #[allow(unused_variables)]

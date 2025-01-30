@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::utils::{bitset::BitSet, umi_freq::UmiFreq};
 
-use super::{Algo, Algorithm};
+use super::Algorithm;
 
 pub struct Adjacency {}
 
@@ -13,11 +13,10 @@ impl Adjacency {
     }
 }
 
-impl Algo for Adjacency {}
-
 impl Algorithm for Adjacency {
     #[allow(unused_variables)]
     fn apply(
+        &self,
         reads: &std::collections::HashMap<
             Arc<crate::utils::bitset::BitSet>,
             Arc<crate::utils::read_freq::ReadFreq>,
