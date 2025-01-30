@@ -9,7 +9,7 @@ set -euo pipefail
 
 echo "================= Debug Info ================="
 echo "Job Owner: $(whoami)"
-echo "Job Nodelist: ${SLURM_JOB_NODELIST}"
+echo "Job Nodelist: ${SLURM_JOB_NODELIST:-{'not a slurm job'}"
 echo "Job Date: $(date)"
 echo "Current Branch: $(git rev-parse --abbrev-ref HEAD)"
 echo "Current Commit ID: $(git rev-parse HEAD)"
@@ -43,6 +43,7 @@ make -j16
 popd
 
 # UMICollapse
+eval $(spack unload --sh gcc@13.2.0)
 pushd umicollapse
 cargo build --release
 popd
