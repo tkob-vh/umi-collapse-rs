@@ -72,6 +72,7 @@ impl UcSAMRead {
         RegexBuilder::new()
             .caseless(true)
             .multi_line(false)
+            .jit(true)
             .build(&pattern)
             .expect("Failed to build UMI pattern regex")
     }
