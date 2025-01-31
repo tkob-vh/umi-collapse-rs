@@ -80,3 +80,24 @@ pub fn to_bitset(s: &str) -> BitSet {
     }
     res
 }
+
+/// Get the unclipped start position (0-based, inclusive) or end position (0-based, inclusive).
+///
+/// If not reverse, get start position.
+/// This is the alignment start adjusted for any clipped bases.
+/// For example, if the read has an alignment start of 100 but the first 4 bases were clipped
+/// (hard or soft clipped) then this method will return 96.
+///
+/// Else, get end position.
+/// This is the alignment end adjusted for any clipped bases.
+/// For example, if the read has an alignment end of 100 but the last 7 bases were clipped
+/// (hard or soft clipped) then this method will return 107.
+pub fn get_unclipped_pos(record: &rust_htslib::bam::Record) -> i64 {
+    let cigar_str = record.cigar();
+
+    if record.is_reverse() {
+        cigar_str.end_pos() - 1 + cigar_str.trailing_softclips() + cigar_str.trailing_hardclips()
+    } else {
+        cigar_str.pos() - cigar_str.leading_softclips() - cigar_str.leading_hardclips()
+    }
+}

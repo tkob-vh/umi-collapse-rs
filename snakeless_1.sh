@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -J nosnake
 #SBATCH -N 1
-#SBATCH -n 32
-#SBATCH -w hepnode[1-3]
+#SBATCH -n 64
+#SBATCH -w hepnode[2]
 #SBATCH -o output/no_snake.%j.log
 
 set -euo pipefail
