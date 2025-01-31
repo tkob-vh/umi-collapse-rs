@@ -16,6 +16,7 @@ use crate::data::naive::Naive;
 use crate::data::DataStruct;
 use crate::merge::{AnyMerge, AvgQualMerge, MapQualMerge, Merge};
 use crate::utils::cluster_tracker::ClusterTracker;
+use crate::utils::get_unclipped_pos;
 use crate::utils::{
     bitset::BitSet,
     calculate_hash,
@@ -116,11 +117,7 @@ impl DeduplicateSAM {
                 }
             }
 
-            let unclipped_pos = if record.is_reverse() {
-                get_unclipped_end(&record)
-            } else {
-                get_unclipped_start(&record)
-            };
+            let unclipped_pos = get_unclipped_pos(&record);
 
             let alignment: Rc<Align> = if args.paired {
                 Rc::new(Align::Paired(PairedAlignment::new(
@@ -564,24 +561,4 @@ impl PairedAlignment {
             tlen,
         }
     }
-}
-
-/// Get the unclipped start position (0-based, inclusive).
-/// This is the alignment start adjusted for any clipped bases.
-/// For example, if the read has an alignment start of 100 but the first 4 bases were clipped
-/// (hard or soft clipped) then this method will return 96.
-fn get_unclipped_start(record: &Record) -> i64 {
-    let cigar_str = record.cigar();
-
-    cigar_str.pos() - cigar_str.leading_softclips() - cigar_str.leading_hardclips()
-}
-
-/// Get the unclipped end position (0-based, inclusive).
-/// This is the alignment end adjusted for any clipped bases.
-/// For example, if the read has an alignment end of 100 but the last 7 bases were clipped
-/// (hard or soft clipped) then this method will return 107.
-fn get_unclipped_end(record: &Record) -> i64 {
-    let ciger_str = record.cigar();
-
-    ciger_str.end_pos() - 1 + ciger_str.trailing_softclips() + ciger_str.trailing_hardclips()
 }
