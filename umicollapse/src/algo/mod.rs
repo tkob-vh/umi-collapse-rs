@@ -4,16 +4,12 @@ pub mod directional;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::{
-    data::DataStruct,
-    utils::{bitset::BitSet, cluster_tracker::ClusterTracker, read_freq::ReadFreq},
-};
+use crate::utils::{bitset::BitSet, cluster_tracker::ClusterTracker, read_freq::ReadFreq};
 
 pub trait Algorithm {
     fn apply(
-        &self,
+        &mut self,
         reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
-        data: &mut Box<dyn DataStruct>,
         tracker: &mut ClusterTracker,
         umi_length: usize,
         k: i32,

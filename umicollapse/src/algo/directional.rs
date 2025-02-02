@@ -10,24 +10,26 @@ use crate::{
 
 use super::Algorithm;
 
-pub struct Directional {}
+pub struct Directional<D: DataStruct> {
+    data: D,
+}
 
-impl Directional {
-    pub fn new() -> Self {
-        Self {}
+impl<D: DataStruct> Directional<D> {
+    pub fn new(data: D) -> Self {
+        Self { data }
     }
 
     fn visit_and_remove(
+        &mut self,
         start_umi: Rc<BitSet>,
         reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
-        data: &mut Box<dyn DataStruct>,
         tracker: &mut ClusterTracker,
         k: i32,
         percentage: f32,
     ) {
         // Calculate threshold exactly as Java does
         let threshold = (percentage * (reads.get(&start_umi).unwrap().freq + 1) as f32) as i32;
-        let near_umis = data.remove_near(&start_umi, k, threshold);
+        let near_umis = self.data.remove_near(&start_umi, k, threshold);
 
         // Record to tracker
         tracker.add_all(&near_umis, reads);
@@ -38,16 +40,15 @@ impl Directional {
                 continue;
             }
 
-            Directional::visit_and_remove(v, reads, data, tracker, k, percentage);
+            self.visit_and_remove(v, reads, tracker, k, percentage);
         }
     }
 }
 
-impl Algorithm for Directional {
+impl<D: DataStruct> Algorithm for Directional<D> {
     fn apply(
-        &self,
+        &mut self,
         reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
-        data: &mut Box<dyn DataStruct>,
         tracker: &mut ClusterTracker,
         umi_length: usize,
         k: i32,
@@ -65,15 +66,15 @@ impl Algorithm for Directional {
 
         freq.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
 
-        data.change(m, umi_length, k);
+        self.data.change(m, umi_length, k);
 
         let mut res: Vec<Rc<dyn crate::utils::read::UcRead>> = Vec::new();
 
         for entry in freq {
             let umi = entry.umi;
             let read_freq = entry.read_freq;
-            if data.contains(&umi) {
-                Directional::visit_and_remove(umi.clone(), reads, data, tracker, k, percentage);
+            if self.data.contains(&umi) {
+                self.visit_and_remove(umi.clone(), reads, tracker, k, percentage);
                 tracker.track(umi.clone(), &read_freq.read);
                 res.push(read_freq.read.clone());
             }
