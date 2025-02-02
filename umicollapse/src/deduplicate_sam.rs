@@ -321,6 +321,7 @@ impl PartialOrd for ReverseRead {
 }
 
 struct UcWriter {
+    thread_num: usize,
     paired: bool,
     writer: rust_htslib::bam::Writer,
     in_file: std::path::PathBuf,
@@ -348,6 +349,7 @@ impl UcWriter {
             .expect("Failed to set the number of threads for writer");
 
         Self {
+            thread_num: args.num_threads,
             in_file: if paired {
                 in_file.to_owned()
             } else {
@@ -401,6 +403,10 @@ impl UcWriter {
 
         let mut reader: Reader =
             Reader::from_path(&self.in_file).expect("Failed to open the input file");
+
+        reader
+            .set_threads(self.thread_num)
+            .expect("Failed to set the number of threads for reader");
 
         let mut record = Record::new();
 
