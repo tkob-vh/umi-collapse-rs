@@ -8,13 +8,9 @@ use std::time::SystemTime;
 use rust_htslib::bam::{Format, Header, HeaderView, Read, Reader, Record};
 use tracing::{debug, info};
 
-use crate::algo::adjacency::Adjacency;
-use crate::algo::directional::Directional;
 use crate::algo::Algorithm;
 use crate::cli::Cli;
-use crate::data::naive::Naive;
-use crate::data::DataStruct;
-use crate::merge::{AnyMerge, AvgQualMerge, MapQualMerge, Merge};
+use crate::merge::Merge;
 use crate::utils::cluster_tracker::ClusterTracker;
 use crate::utils::get_unclipped_pos;
 use crate::utils::{
@@ -24,7 +20,13 @@ use crate::utils::{
     read_freq::ReadFreq,
 };
 
-pub struct DeduplicateSAM {
+pub trait DeduplicateInterface {
+    fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime);
+}
+
+pub struct DeduplicateSAM<A: Algorithm, M: Merge> {
+    algo: A,
+    merge_algo: M,
     total_umi_count: usize,
     max_umi_count: usize,
     deduped_count: usize,
@@ -35,9 +37,11 @@ pub struct DeduplicateSAM {
     chimeric: i32,
 }
 
-impl DeduplicateSAM {
-    pub fn new(args: &Cli) -> Self {
+impl<A: Algorithm, M: Merge> DeduplicateSAM<A, M> {
+    pub fn new(args: &Cli, algo: A, merge_algo: M) -> Self {
         Self {
+            algo,
+            merge_algo,
             total_umi_count: 0,
             max_umi_count: 0,
             deduped_count: 0,
@@ -48,18 +52,9 @@ impl DeduplicateSAM {
             chimeric: 0,
         }
     }
-
-    pub fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
-        let merge_algo: Box<dyn Merge> = match args.merge_str.as_ref().unwrap().as_str() {
-            "any" => Box::new(AnyMerge::new()),
-            "avgqual" => Box::new(AvgQualMerge::new()),
-            "mapqual" => Box::new(MapQualMerge::new()),
-            _ => panic!(
-                "Invalid merge algorithm: {}",
-                args.merge_str.as_ref().unwrap()
-            ),
-        };
-
+}
+impl<A: Algorithm, M: Merge> DeduplicateInterface for DeduplicateSAM<A, M> {
+    fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         // Set default umi pattern
         let regex = UcSAMRead::umi_pattern(&args.umi_separator);
 
@@ -154,7 +149,7 @@ impl DeduplicateSAM {
                     e.insert(Rc::new(ReadFreq::new(read.clone(), 1)));
                 }
                 std::collections::hash_map::Entry::Occupied(mut e) => {
-                    let merged_read = merge_algo.merge(read.clone(), e.get().read.clone());
+                    let merged_read = self.merge_algo.merge(read.clone(), e.get().read.clone());
                     let new_freq = e.get().freq + 1;
                     e.insert(Rc::new(ReadFreq::new(merged_read, new_freq)));
                 }
@@ -182,12 +177,6 @@ impl DeduplicateSAM {
 
         let align_pos_count: usize = align.len();
 
-        let algo: Box<dyn Algorithm> = match args.algo_str.as_str() {
-            "dir" => Box::new(Directional::new()),
-            "adj" => Box::new(Adjacency::new()),
-            _ => panic!("Invalid algorithm: {}", &args.algo_str),
-        };
-
         let mut cluster_trackers: Option<HashMap<Rc<Align>, ClusterTracker>> =
             if args.track_clusters {
                 Some(HashMap::new())
@@ -196,17 +185,10 @@ impl DeduplicateSAM {
             };
 
         for (alignment, umi_reads) in align.iter() {
-            let mut data: Box<dyn DataStruct> = match args.data_str.as_str() {
-                "naive" => Box::new(Naive::new()),
-                _ => panic!("Invalid data structure: {}", &args.algo_str),
-            };
-
             let mut curr_trakcer = ClusterTracker::new(args.track_clusters);
 
-            // TODO: Currently use directional only.
-            let dedupped = algo.apply(
+            let dedupped = self.algo.apply(
                 umi_reads,
-                &mut data,
                 &mut curr_trakcer,
                 self.umi_length,
                 args.k,
@@ -235,7 +217,7 @@ impl DeduplicateSAM {
 
         // second pass to tag reads with their cluster and other stats
         if args.track_clusters {
-            debug!("Donw with the first pass for tracking clusters");
+            debug!("Done with the first pass for tracking clusters");
             //TODO: to be finished.
         }
 
@@ -269,7 +251,6 @@ impl DeduplicateSAM {
         }
     }
 }
-
 const HASH_CONST: i32 = 31;
 
 #[derive(Clone)]
@@ -291,11 +272,10 @@ impl ReverseRead {
 
 impl PartialEq for ReverseRead {
     fn eq(&self, other: &Self) -> bool {
-        // 先比较长度,不等则快速返回
         if self.ref_str.len() != other.ref_str.len() || self.name.len() != other.name.len() {
             return false;
         }
-        // 按重要性顺序比较
+
         self.ref_str == other.ref_str && self.name == other.name
     }
 }
@@ -304,7 +284,6 @@ impl Eq for ReverseRead {}
 
 impl Hash for ReverseRead {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // 使用类似Java的hash组合方式
         let mut hash = 0i32;
 
         // name hash
@@ -328,7 +307,6 @@ impl Hash for ReverseRead {
 
 impl Ord for ReverseRead {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // 按照Java版本相同的比较优先级
         self.coord
             .cmp(&other.coord)
             .then_with(|| self.ref_str.cmp(&other.ref_str))

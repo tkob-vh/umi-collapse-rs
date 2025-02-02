@@ -1,8 +1,12 @@
 use std::time::SystemTime;
 
 use clap::Parser;
-use deduplicate_sam::DeduplicateSAM;
+use data::naive::Naive;
 use tracing::info;
+
+use crate::algo::{adjacency::Adjacency, directional::Directional};
+use crate::merge::{AnyMerge, AvgQualMerge, MapQualMerge};
+use deduplicate_sam::{DeduplicateInterface, DeduplicateSAM};
 
 mod algo;
 mod cli;
@@ -46,12 +50,50 @@ fn main() {
     if args.mode.eq("fastq") {
         //TODO: to be finished.
     } else if args.mode.eq("bam") || args.mode.eq("sam") {
-        let mut dedup = DeduplicateSAM::new(&args);
-        if args.two_pass {
-            // TODO: to be finished.
-        } else {
-            dedup.deduplicate_and_merge(&args, &start_time);
-        }
+        let mut dedup: Box<dyn DeduplicateInterface> = match (
+            args.algo_str.as_str(),
+            args.merge_str.as_ref().unwrap().as_str(),
+            args.data_str.as_str(),
+        ) {
+            ("dir", "any", "naive") => Box::new(DeduplicateSAM::new(
+                &args,
+                Directional::new(Naive::new()),
+                AnyMerge::new(),
+            )),
+            ("dir", "avgqual", "naive") => Box::new(DeduplicateSAM::new(
+                &args,
+                Directional::new(Naive::new()),
+                AvgQualMerge::new(),
+            )),
+            ("dir", "mapqual", "naive") => Box::new(DeduplicateSAM::new(
+                &args,
+                Directional::new(Naive::new()),
+                MapQualMerge::new(),
+            )),
+            ("adj", "any", "naive") => Box::new(DeduplicateSAM::new(
+                &args,
+                Adjacency::new(Naive::new()),
+                AnyMerge::new(),
+            )),
+            ("adj", "avgqual", "naive") => Box::new(DeduplicateSAM::new(
+                &args,
+                Adjacency::new(Naive::new()),
+                AvgQualMerge::new(),
+            )),
+            ("adj", "mapqual", "naive") => Box::new(DeduplicateSAM::new(
+                &args,
+                Adjacency::new(Naive::new()),
+                MapQualMerge::new(),
+            )),
+            _ => panic!(
+                "Invalid algorithm combination: {} , {} and {}",
+                args.algo_str,
+                args.merge_str.as_ref().unwrap(),
+                args.data_str
+            ),
+        };
+
+        dedup.deduplicate_and_merge(&args, &start_time);
     }
 
     let end_time = SystemTime::now();
