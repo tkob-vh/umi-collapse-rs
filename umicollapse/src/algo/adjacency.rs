@@ -1,5 +1,6 @@
+#![allow(clippy::mutable_key_type)]
+
 use std::collections::HashMap;
-use std::rc::Rc;
 
 use crate::{
     data::DataStruct,
@@ -18,40 +19,34 @@ impl Adjacency {
 
 impl Algorithm for Adjacency {
     #[allow(unused_variables)]
-    fn apply<R: UcRead, D: DataStruct>(
+    fn apply<'align, R: UcRead, D: DataStruct<'align>>(
         &mut self,
-        reads: &std::collections::HashMap<
-            Rc<crate::utils::bitset::BitSet>,
-            Rc<crate::utils::read_freq::ReadFreq<R>>,
-        >,
-        data: &mut D,
-        tracker: &mut crate::utils::cluster_tracker::ClusterTracker<R>,
+        reads: &'align HashMap<crate::utils::bitset::BitSet, crate::utils::read_freq::ReadFreq<R>>,
+        tracker: &mut crate::utils::cluster_tracker::ClusterTracker<'align, 'align, R>,
         umi_length: usize,
         k: i32,
         percentage: f32,
-    ) -> Vec<Rc<dyn crate::utils::read::UcRead>> {
+    ) -> Vec<&'align R> {
         let mut freq: Vec<UmiFreq<R>> = reads
             .iter()
-            .map(|(umi, rf)| UmiFreq::new(umi.clone(), rf.clone()))
+            .map(|(umi, rf)| UmiFreq::new(umi, rf))
             .collect();
 
         freq.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
 
-        let m: HashMap<Rc<BitSet>, i32> = reads
-            .iter()
-            .map(|(umi, rf)| (umi.clone(), rf.freq))
-            .collect();
+        let m: HashMap<&BitSet, i32> = reads.iter().map(|(umi, rf)| (umi, rf.freq)).collect();
 
+        let mut data: D = D::default();
         data.re_init(m, umi_length, k);
-        let mut res: Vec<Rc<dyn crate::utils::read::UcRead>> = Vec::new();
+        let mut res: Vec<&R> = Vec::new();
 
         for entry in freq {
             let umi = entry.umi;
             let read_freq = entry.read_freq;
-            if data.contains(&umi) {
-                tracker.add_all(&data.remove_near(&umi, k, 0), reads);
+            if data.contains(umi) {
+                tracker.add_all(&data.remove_near(umi, k, 0), reads);
                 tracker.track(umi, &read_freq.read);
-                res.push(read_freq.read.clone());
+                res.push(&read_freq.read);
             }
         }
 

@@ -1,8 +1,9 @@
+#![allow(clippy::mutable_key_type)]
+
 pub mod adjacency;
 pub mod directional;
 
 use std::collections::HashMap;
-use std::rc::Rc;
 
 use crate::{
     data::DataStruct,
@@ -10,13 +11,12 @@ use crate::{
 };
 
 pub trait Algorithm {
-    fn apply<R: UcRead, D: DataStruct>(
+    fn apply<'align, R: UcRead, D: DataStruct<'align>>(
         &mut self,
-        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq<R>>>,
-        data: &mut D,
-        tracker: &mut ClusterTracker<R>,
+        reads: &'align HashMap<BitSet, ReadFreq<R>>,
+        tracker: &mut ClusterTracker<'align, 'align, R>,
         umi_length: usize,
         k: i32,
         percentage: f32,
-    ) -> Vec<Rc<dyn crate::utils::read::UcRead>>;
+    ) -> Vec<&'align R>;
 }

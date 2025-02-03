@@ -1,7 +1,6 @@
 use std::time::SystemTime;
 
 use clap::Parser;
-use data::naive::Naive;
 use tracing::info;
 
 use crate::algo::{adjacency::Adjacency, directional::Directional};
@@ -53,43 +52,36 @@ fn main() {
         let mut dedup: Box<dyn DeduplicateInterface> = match (
             args.algo_str.as_str(),
             args.merge_str.as_ref().unwrap().as_str(),
-            args.data_str.as_str(),
         ) {
-            ("dir", "any", "naive") => Box::new(DeduplicateSAM::new(
+            ("dir", "any") => Box::new(DeduplicateSAM::new(
                 &args,
                 Directional::new(),
                 AnyMerge::new(),
-                Naive::default(),
             )),
-            ("dir", "avgqual", "naive") => Box::new(DeduplicateSAM::new(
+            ("dir", "avgqual") => Box::new(DeduplicateSAM::new(
                 &args,
                 Directional::new(),
                 AvgQualMerge::new(),
-                Naive::default(),
             )),
-            ("dir", "mapqual", "naive") => Box::new(DeduplicateSAM::new(
+            ("dir", "mapqual") => Box::new(DeduplicateSAM::new(
                 &args,
                 Directional::new(),
                 MapQualMerge::new(),
-                Naive::default(),
             )),
-            ("adj", "any", "naive") => Box::new(DeduplicateSAM::new(
+            ("adj", "any") => Box::new(DeduplicateSAM::new(
                 &args,
                 Adjacency::new(),
                 AnyMerge::new(),
-                Naive::default(),
             )),
-            ("adj", "avgqual", "naive") => Box::new(DeduplicateSAM::new(
+            ("adj", "avgqual") => Box::new(DeduplicateSAM::new(
                 &args,
                 Adjacency::new(),
                 AvgQualMerge::new(),
-                Naive::default(),
             )),
-            ("adj", "mapqual", "naive") => Box::new(DeduplicateSAM::new(
+            ("adj", "mapqual") => Box::new(DeduplicateSAM::new(
                 &args,
                 Adjacency::new(),
                 MapQualMerge::new(),
-                Naive::default(),
             )),
             _ => panic!(
                 "Invalid algorithm combination: {} , {} and {}",

@@ -1,5 +1,6 @@
+#![allow(clippy::mutable_key_type)]
+
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 
 use crate::utils;
 
@@ -7,20 +8,20 @@ use super::bitset::BitSet;
 use super::read::UcRead;
 
 #[allow(dead_code)]
-pub struct ClusterStats<R: UcRead> {
-    umi: Rc<BitSet>,
+pub struct ClusterStats<'cluster_stats, R: UcRead> {
+    umi: &'cluster_stats BitSet,
     freq: i32,
-    read: Rc<R>,
+    read: &'cluster_stats R,
 }
 
-impl<R: UcRead> ClusterStats<R> {
-    pub fn new(umi: Rc<BitSet>, freq: i32, read: Rc<R>) -> Self {
+impl<'a, R: UcRead> ClusterStats<'a, R> {
+    pub fn new(umi: &'a BitSet, freq: i32, read: &'a R) -> Self {
         Self { umi, freq, read }
     }
 
     #[allow(dead_code)]
     pub fn get_umi(&self) -> &BitSet {
-        &self.umi
+        self.umi
     }
 
     #[allow(dead_code)]
@@ -29,22 +30,22 @@ impl<R: UcRead> ClusterStats<R> {
     }
 
     #[allow(dead_code)]
-    pub fn get_read(&self) -> &Rc<R> {
-        &self.read
+    pub fn get_read(&self) -> &R {
+        self.read
     }
 }
 
-pub struct ClusterTracker<R: UcRead> {
+pub struct ClusterTracker<'bitset, 'cluster_stats, R: UcRead> {
     track: bool,
     offset: usize,
-    temp: Vec<Rc<BitSet>>,
+    temp: Vec<&'bitset BitSet>,
     temp_freq: i32,
-    to_unique_idx: HashMap<Rc<BitSet>, usize>,
-    clusters: Vec<ClusterStats<R>>,
+    to_unique_idx: HashMap<&'bitset BitSet, usize>,
+    clusters: Vec<ClusterStats<'cluster_stats, R>>,
     idx: usize,
 }
 
-impl<R: UcRead> ClusterTracker<R> {
+impl<'a, 'b, R: UcRead> ClusterTracker<'a, 'b, R> {
     pub fn new(track: bool) -> Self {
         Self {
             track,
@@ -73,8 +74,8 @@ impl<R: UcRead> ClusterTracker<R> {
 
     pub fn add_all(
         &mut self,
-        s: &HashSet<Rc<BitSet>>,
-        reads: &HashMap<Rc<BitSet>, Rc<utils::read_freq::ReadFreq<R>>>,
+        s: &HashSet<&'a BitSet>,
+        reads: &HashMap<BitSet, utils::read_freq::ReadFreq<R>>,
     ) {
         if self.track {
             self.temp.extend(s.iter().cloned());
@@ -85,17 +86,14 @@ impl<R: UcRead> ClusterTracker<R> {
         }
     }
 
-    pub fn track(&mut self, unique: Rc<BitSet>, read: &Rc<R>) {
+    pub fn track(&mut self, unique: &'b BitSet, read: &'b R) {
         if self.track {
             for s in &self.temp {
                 self.to_unique_idx.insert(s.to_owned(), self.idx);
             }
 
-            self.clusters.push(ClusterStats::new(
-                unique.clone(),
-                self.temp_freq,
-                read.clone(),
-            ));
+            self.clusters
+                .push(ClusterStats::new(unique, self.temp_freq, read));
 
             self.temp.clear();
             self.temp_freq = 0;

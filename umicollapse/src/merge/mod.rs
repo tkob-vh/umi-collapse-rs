@@ -1,12 +1,10 @@
 //! The merge algorithms.
 //!
 
-use std::rc::Rc;
-
 use crate::utils::read::UcRead;
 
 pub trait Merge<R: UcRead> {
-    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R>;
+    fn merge(&self, a: R, b: R) -> R;
 }
 
 pub struct AnyMerge;
@@ -19,7 +17,7 @@ impl AnyMerge {
 
 impl<R: UcRead> Merge<R> for AnyMerge {
     #[allow(unused_variables)]
-    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R> {
+    fn merge(&self, a: R, b: R) -> R {
         a
     }
 }
@@ -33,7 +31,7 @@ impl AvgQualMerge {
 }
 
 impl<R: UcRead> Merge<R> for AvgQualMerge {
-    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R> {
+    fn merge(&self, a: R, b: R) -> R {
         if a.get_avg_qual() >= b.get_avg_qual() {
             a
         } else {
@@ -51,7 +49,7 @@ impl MapQualMerge {
 }
 
 impl<R: UcRead> Merge<R> for MapQualMerge {
-    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R> {
+    fn merge(&self, a: R, b: R) -> R {
         let sam_a: &crate::utils::read::UcSAMRead = a.as_any().downcast_ref().unwrap();
         let sam_b: &crate::utils::read::UcSAMRead = b.as_any().downcast_ref().unwrap();
 
