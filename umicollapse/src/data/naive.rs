@@ -7,12 +7,13 @@ use crate::utils::{bitset::BitSet, umi_dist};
 
 use super::DataStruct;
 
+#[derive(Clone)]
 pub struct Naive {
     umi_freq: HashMap<Rc<BitSet>, i32>,
 }
 
-impl Naive {
-    pub fn new() -> Self {
+impl Default for Naive {
+    fn default() -> Self {
         Self {
             umi_freq: HashMap::new(),
         }
@@ -21,7 +22,7 @@ impl Naive {
 
 impl DataStruct for Naive {
     #[allow(unused_variables)]
-    fn change(&mut self, umi_freq: HashMap<Rc<BitSet>, i32>, umi_length: usize, max_edits: i32) {
+    fn re_init(&mut self, umi_freq: HashMap<Rc<BitSet>, i32>, umi_length: usize, max_edits: i32) {
         self.umi_freq = umi_freq;
     }
 

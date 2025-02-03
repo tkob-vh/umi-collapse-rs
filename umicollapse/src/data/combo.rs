@@ -5,20 +5,22 @@ use crate::utils::{bitset::BitSet, char_equals, char_set};
 
 use super::DataStruct;
 
+#[derive(Clone)]
 pub struct Combo {
     umi_freq: HashMap<Rc<BitSet>, i32>,
     umi_length: usize,
 }
 
-impl Combo {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
+impl Default for Combo {
+    fn default() -> Self {
         Self {
             umi_freq: HashMap::new(),
             umi_length: 0,
         }
     }
+}
 
+impl Combo {
     fn recursive_remove_near(
         &mut self,
         umi: &BitSet,
@@ -71,7 +73,7 @@ impl Combo {
 
 impl DataStruct for Combo {
     #[allow(unused_variables)]
-    fn change(&mut self, umi_freq: HashMap<Rc<BitSet>, i32>, umi_length: usize, max_edits: i32) {
+    fn re_init(&mut self, umi_freq: HashMap<Rc<BitSet>, i32>, umi_length: usize, max_edits: i32) {
         self.umi_freq = umi_freq;
         self.umi_length = umi_length;
     }

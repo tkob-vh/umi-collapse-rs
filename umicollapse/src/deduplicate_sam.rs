@@ -10,6 +10,7 @@ use tracing::{debug, info};
 
 use crate::algo::Algorithm;
 use crate::cli::Cli;
+use crate::data::DataStruct;
 use crate::merge::Merge;
 use crate::utils::cluster_tracker::ClusterTracker;
 use crate::utils::get_unclipped_pos;
@@ -24,9 +25,10 @@ pub trait DeduplicateInterface {
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime);
 }
 
-pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>> {
+pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> {
     algo: A,
     merge_algo: M,
+    data: D,
     total_umi_count: usize,
     max_umi_count: usize,
     deduped_count: usize,
@@ -37,11 +39,12 @@ pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>> {
     chimeric: i32,
 }
 
-impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
-    pub fn new(args: &Cli, algo: A, merge_algo: M) -> Self {
+impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateSAM<A, M, D> {
+    pub fn new(args: &Cli, algo: A, merge_algo: M, data: D) -> Self {
         Self {
             algo,
             merge_algo,
+            data,
             total_umi_count: 0,
             max_umi_count: 0,
             deduped_count: 0,
@@ -53,7 +56,9 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
         }
     }
 }
-impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<A, M> {
+impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateInterface
+    for DeduplicateSAM<A, M, D>
+{
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         // Set default umi pattern
         let regex = UcSAMRead::umi_pattern(&args.umi_separator);
@@ -183,8 +188,11 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
         for (alignment, umi_reads) in align.iter() {
             let mut curr_trakcer = ClusterTracker::new(args.track_clusters);
 
+            let mut data = self.data.clone();
+
             let dedupped = self.algo.apply(
                 umi_reads,
+                &mut data,
                 &mut curr_trakcer,
                 self.umi_length,
                 args.k,
