@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::{
     data::DataStruct,
-    utils::{bitset::BitSet, umi_freq::UmiFreq},
+    utils::{bitset::BitSet, read::UcRead, umi_freq::UmiFreq},
 };
 
 use super::Algorithm;
@@ -20,18 +20,18 @@ impl<D: DataStruct> Adjacency<D> {
 
 impl<D: DataStruct> Algorithm for Adjacency<D> {
     #[allow(unused_variables)]
-    fn apply(
+    fn apply<R: UcRead>(
         &mut self,
         reads: &std::collections::HashMap<
             Rc<crate::utils::bitset::BitSet>,
-            Rc<crate::utils::read_freq::ReadFreq>,
+            Rc<crate::utils::read_freq::ReadFreq<R>>,
         >,
-        tracker: &mut crate::utils::cluster_tracker::ClusterTracker,
+        tracker: &mut crate::utils::cluster_tracker::ClusterTracker<R>,
         umi_length: usize,
         k: i32,
         percentage: f32,
     ) -> Vec<Rc<dyn crate::utils::read::UcRead>> {
-        let mut freq: Vec<UmiFreq> = reads
+        let mut freq: Vec<UmiFreq<R>> = reads
             .iter()
             .map(|(umi, rf)| UmiFreq::new(umi.clone(), rf.clone()))
             .collect();

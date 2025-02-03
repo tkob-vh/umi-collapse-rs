@@ -4,16 +4,17 @@ use std::rc::Rc;
 use crate::utils;
 
 use super::bitset::BitSet;
+use super::read::UcRead;
 
 #[allow(dead_code)]
-pub struct ClusterStats {
+pub struct ClusterStats<R: UcRead> {
     umi: Rc<BitSet>,
     freq: i32,
-    read: Rc<dyn utils::read::UcRead>,
+    read: Rc<R>,
 }
 
-impl ClusterStats {
-    pub fn new(umi: Rc<BitSet>, freq: i32, read: Rc<dyn utils::read::UcRead>) -> Self {
+impl<R: UcRead> ClusterStats<R> {
+    pub fn new(umi: Rc<BitSet>, freq: i32, read: Rc<R>) -> Self {
         Self { umi, freq, read }
     }
 
@@ -28,22 +29,22 @@ impl ClusterStats {
     }
 
     #[allow(dead_code)]
-    pub fn get_read(&self) -> &Rc<dyn utils::read::UcRead> {
+    pub fn get_read(&self) -> &Rc<R> {
         &self.read
     }
 }
 
-pub struct ClusterTracker {
+pub struct ClusterTracker<R: UcRead> {
     track: bool,
     offset: usize,
     temp: Vec<Rc<BitSet>>,
     temp_freq: i32,
     to_unique_idx: HashMap<Rc<BitSet>, usize>,
-    clusters: Vec<ClusterStats>,
+    clusters: Vec<ClusterStats<R>>,
     idx: usize,
 }
 
-impl ClusterTracker {
+impl<R: UcRead> ClusterTracker<R> {
     pub fn new(track: bool) -> Self {
         Self {
             track,
@@ -73,7 +74,7 @@ impl ClusterTracker {
     pub fn add_all(
         &mut self,
         s: &HashSet<Rc<BitSet>>,
-        reads: &HashMap<Rc<BitSet>, Rc<utils::read_freq::ReadFreq>>,
+        reads: &HashMap<Rc<BitSet>, Rc<utils::read_freq::ReadFreq<R>>>,
     ) {
         if self.track {
             self.temp.extend(s.iter().cloned());
@@ -84,7 +85,7 @@ impl ClusterTracker {
         }
     }
 
-    pub fn track(&mut self, unique: Rc<BitSet>, read: &Rc<dyn utils::read::UcRead>) {
+    pub fn track(&mut self, unique: Rc<BitSet>, read: &Rc<R>) {
         if self.track {
             for s in &self.temp {
                 self.to_unique_idx.insert(s.to_owned(), self.idx);
@@ -108,7 +109,7 @@ impl ClusterTracker {
     }
 
     #[allow(dead_code)]
-    pub fn get_stats(&self, id: usize) -> &ClusterStats {
+    pub fn get_stats(&self, id: usize) -> &ClusterStats<R> {
         self.clusters.get(id).unwrap()
     }
 }
