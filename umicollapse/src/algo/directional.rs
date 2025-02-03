@@ -11,26 +11,25 @@ use crate::{
 
 use super::Algorithm;
 
-pub struct Directional<D: DataStruct> {
-    data: D,
-}
+pub struct Directional {}
 
-impl<D: DataStruct> Directional<D> {
-    pub fn new(data: D) -> Self {
-        Self { data }
+impl Directional {
+    pub fn new() -> Self {
+        Self {}
     }
 
-    fn visit_and_remove<R: UcRead>(
+    fn visit_and_remove<R: UcRead, D: DataStruct>(
         &mut self,
         start_umi: Rc<BitSet>,
         reads: &HashMap<Rc<BitSet>, Rc<ReadFreq<R>>>,
+        data: &mut D,
         tracker: &mut ClusterTracker<R>,
         k: i32,
         percentage: f32,
     ) {
         // Calculate threshold exactly as Java does
         let threshold = (percentage * (reads.get(&start_umi).unwrap().freq + 1) as f32) as i32;
-        let near_umis = self.data.remove_near(&start_umi, k, threshold);
+        let near_umis = data.remove_near(&start_umi, k, threshold);
 
         // Record to tracker
         tracker.add_all(&near_umis, reads);
@@ -41,41 +40,42 @@ impl<D: DataStruct> Directional<D> {
                 continue;
             }
 
-            self.visit_and_remove(v, reads, tracker, k, percentage);
+            self.visit_and_remove(v, reads, data, tracker, k, percentage);
         }
     }
 }
 
-impl<D: DataStruct> Algorithm for Directional<D> {
-    fn apply<R: UcRead>(
+impl Algorithm for Directional {
+    fn apply<R: UcRead, D: DataStruct>(
         &mut self,
         reads: &HashMap<Rc<BitSet>, Rc<ReadFreq<R>>>,
+        data: &mut D,
         tracker: &mut ClusterTracker<R>,
         umi_length: usize,
         k: i32,
         percentage: f32,
     ) -> Vec<Rc<dyn crate::utils::read::UcRead>> {
-        let m: HashMap<Rc<BitSet>, i32> = reads
+        let data_member: HashMap<Rc<BitSet>, i32> = reads
             .iter()
             .map(|(umi, rf)| (umi.clone(), rf.freq))
             .collect();
 
-        let mut freq: Vec<UmiFreq<R>> = reads
+        let mut umi_freqs: Vec<UmiFreq<R>> = reads
             .iter()
             .map(|(umi, rf)| UmiFreq::new(umi.clone(), rf.clone()))
             .collect();
 
-        freq.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
+        umi_freqs.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
 
-        self.data.change(m, umi_length, k);
+        data.re_init(data_member, umi_length, k);
 
         let mut res: Vec<Rc<dyn crate::utils::read::UcRead>> = Vec::new();
 
-        for entry in freq {
+        for entry in umi_freqs {
             let umi = entry.umi;
             let read_freq = entry.read_freq;
-            if self.data.contains(&umi) {
-                self.visit_and_remove(umi.clone(), reads, tracker, k, percentage);
+            if data.contains(&umi) {
+                self.visit_and_remove(umi.clone(), reads, data, tracker, k, percentage);
                 tracker.track(umi.clone(), &read_freq.read);
                 res.push(read_freq.read.clone());
             }

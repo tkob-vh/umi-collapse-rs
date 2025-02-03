@@ -57,33 +57,39 @@ fn main() {
         ) {
             ("dir", "any", "naive") => Box::new(DeduplicateSAM::new(
                 &args,
-                Directional::new(Naive::new()),
+                Directional::new(),
                 AnyMerge::new(),
+                Naive::default(),
             )),
             ("dir", "avgqual", "naive") => Box::new(DeduplicateSAM::new(
                 &args,
-                Directional::new(Naive::new()),
+                Directional::new(),
                 AvgQualMerge::new(),
+                Naive::default(),
             )),
             ("dir", "mapqual", "naive") => Box::new(DeduplicateSAM::new(
                 &args,
-                Directional::new(Naive::new()),
+                Directional::new(),
                 MapQualMerge::new(),
+                Naive::default(),
             )),
             ("adj", "any", "naive") => Box::new(DeduplicateSAM::new(
                 &args,
-                Adjacency::new(Naive::new()),
+                Adjacency::new(),
                 AnyMerge::new(),
+                Naive::default(),
             )),
             ("adj", "avgqual", "naive") => Box::new(DeduplicateSAM::new(
                 &args,
-                Adjacency::new(Naive::new()),
+                Adjacency::new(),
                 AvgQualMerge::new(),
+                Naive::default(),
             )),
             ("adj", "mapqual", "naive") => Box::new(DeduplicateSAM::new(
                 &args,
-                Adjacency::new(Naive::new()),
+                Adjacency::new(),
                 MapQualMerge::new(),
+                Naive::default(),
             )),
             _ => panic!(
                 "Invalid algorithm combination: {} , {} and {}",
