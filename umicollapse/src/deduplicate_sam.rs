@@ -1,8 +1,9 @@
 //! The core logic.
 
+#![allow(clippy::mutable_key_type)]
+
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::rc::Rc;
 use std::time::SystemTime;
 
 use rust_htslib::bam::{Format, Header, HeaderView, Read, Reader, Record};
@@ -10,7 +11,7 @@ use tracing::{debug, info};
 
 use crate::algo::Algorithm;
 use crate::cli::Cli;
-use crate::data::DataStruct;
+use crate::data::naive::Naive;
 use crate::merge::Merge;
 use crate::utils::cluster_tracker::ClusterTracker;
 use crate::utils::get_unclipped_pos;
@@ -25,10 +26,9 @@ pub trait DeduplicateInterface {
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime);
 }
 
-pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> {
+pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>> {
     algo: A,
     merge_algo: M,
-    data: D,
     total_umi_count: usize,
     max_umi_count: usize,
     deduped_count: usize,
@@ -39,12 +39,11 @@ pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> {
     chimeric: i32,
 }
 
-impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateSAM<A, M, D> {
-    pub fn new(args: &Cli, algo: A, merge_algo: M, data: D) -> Self {
+impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
+    pub fn new(args: &Cli, algo: A, merge_algo: M) -> Self {
         Self {
             algo,
             merge_algo,
-            data,
             total_umi_count: 0,
             max_umi_count: 0,
             deduped_count: 0,
@@ -56,9 +55,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateSAM<A, M, D> {
         }
     }
 }
-impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateInterface
-    for DeduplicateSAM<A, M, D>
-{
+impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<A, M> {
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         // Set default umi pattern
         let regex = UcSAMRead::umi_pattern(&args.umi_separator);
@@ -74,7 +71,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateInterface
         let mut writer: UcWriter =
             UcWriter::new(&args.input, &args.output, &reader, args.paired, args);
 
-        let mut align: HashMap<Rc<Align>, HashMap<Rc<BitSet>, Rc<ReadFreq<UcSAMRead>>>> =
+        let mut align: HashMap<Align, HashMap<BitSet, ReadFreq<UcSAMRead>>> =
             HashMap::with_capacity(1 << 20);
 
         let mut record = Record::new();
@@ -135,24 +132,24 @@ impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateInterface
             };
 
             let umi_reads: &mut HashMap<_, _> = align
-                .entry(Rc::new(alignment))
+                .entry(alignment)
                 .or_insert_with(|| HashMap::with_capacity(4));
 
-            let read = Rc::new(UcSAMRead::new(record.clone().into()));
+            let read = UcSAMRead::new(record.clone());
             let umi = read.get_umi(&regex);
 
             if self.umi_length == 0 {
                 self.umi_length = read.get_umi_length(&regex);
             }
 
-            match umi_reads.entry(Rc::new(umi)) {
+            match umi_reads.entry(umi) {
                 std::collections::hash_map::Entry::Vacant(e) => {
-                    e.insert(Rc::new(ReadFreq::new(read, 1)));
+                    e.insert(ReadFreq::new(read, 1));
                 }
                 std::collections::hash_map::Entry::Occupied(mut e) => {
                     let merged_read = self.merge_algo.merge(read, e.get().read.clone());
                     let new_freq = e.get().freq + 1;
-                    e.insert(Rc::new(ReadFreq::new(merged_read, new_freq)));
+                    e.insert(ReadFreq::new(merged_read, new_freq));
                 }
             }
         }
@@ -178,7 +175,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateInterface
 
         let align_pos_count: usize = align.len();
 
-        let mut cluster_trackers: Option<HashMap<Rc<Align>, ClusterTracker<UcSAMRead>>> =
+        let mut cluster_trackers: Option<HashMap<&Align, ClusterTracker<UcSAMRead>>> =
             if args.track_clusters {
                 Some(HashMap::new())
             } else {
@@ -188,11 +185,10 @@ impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateInterface
         for (alignment, umi_reads) in align.iter() {
             let mut curr_trakcer = ClusterTracker::new(args.track_clusters);
 
-            let mut data = self.data.clone();
-
-            let dedupped = self.algo.apply(
+            // TODO: remove tracker logic if args.track_clusters is false.
+            // TODO: fix the Naive
+            let dedupped = self.algo.apply::<UcSAMRead, Naive>(
                 umi_reads,
-                &mut data,
                 &mut curr_trakcer,
                 self.umi_length,
                 args.k,
@@ -209,11 +205,11 @@ impl<A: Algorithm, M: Merge<UcSAMRead>, D: DataStruct> DeduplicateInterface
                 cluster_trackers
                     .as_mut()
                     .unwrap()
-                    .insert(alignment.clone(), curr_trakcer);
+                    .insert(alignment, curr_trakcer);
             } else {
                 for read in dedupped {
                     writer
-                        .write(&read.downcast_ref::<UcSAMRead>().unwrap().to_sam_record())
+                        .write(read.to_sam_record())
                         .expect("Failed to write the record");
                 }
             }

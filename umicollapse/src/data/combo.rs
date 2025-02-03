@@ -1,34 +1,27 @@
+#![allow(clippy::mutable_key_type)]
+
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 
 use crate::utils::{bitset::BitSet, char_equals, char_set};
 
 use super::DataStruct;
 
-#[derive(Clone)]
-pub struct Combo {
-    umi_freq: HashMap<Rc<BitSet>, i32>,
+#[derive(Clone, Default)]
+pub struct Combo<'bitset> {
+    umi_freq: HashMap<&'bitset BitSet, i32>,
     umi_length: usize,
 }
 
-impl Default for Combo {
-    fn default() -> Self {
-        Self {
-            umi_freq: HashMap::new(),
-            umi_length: 0,
-        }
-    }
-}
-
-impl Combo {
+// TODO: fix the bugs in combo
+impl<'a> Combo<'a> {
     fn recursive_remove_near(
         &mut self,
         umi: &BitSet,
         idx: usize,
         k: i32,
         max_freq: i32,
-        curr: &mut BitSet,
-        res: &mut HashSet<Rc<BitSet>>,
+        mut curr: BitSet,
+        res: &mut HashSet<&'a BitSet>,
         kk: i32,
     ) {
         if k < 0 {
@@ -36,11 +29,11 @@ impl Combo {
         }
 
         if idx >= self.umi_length {
-            if self.umi_freq.contains_key(curr)
-                && (k == kk || self.umi_freq.get(curr).unwrap() <= &max_freq)
+            if self.umi_freq.contains_key(&curr)
+                && (k == kk || self.umi_freq.get(&curr).unwrap() <= &max_freq)
             {
-                res.insert(Rc::new(curr.clone()));
-                self.umi_freq.remove(curr);
+                // res.insert(curr);
+                self.umi_freq.remove(&curr);
             }
             return;
         }
@@ -52,7 +45,7 @@ impl Combo {
                     idx + 1,
                     k,
                     max_freq,
-                    char_set(curr, idx, c),
+                    char_set(&mut curr, idx, c),
                     res,
                     kk,
                 );
@@ -62,7 +55,7 @@ impl Combo {
                     idx + 1,
                     k - 1,
                     max_freq,
-                    char_set(curr, idx, c),
+                    char_set(&mut curr, idx, c),
                     res,
                     kk,
                 );
@@ -71,9 +64,9 @@ impl Combo {
     }
 }
 
-impl DataStruct for Combo {
+impl<'a> DataStruct<'a> for Combo<'a> {
     #[allow(unused_variables)]
-    fn re_init(&mut self, umi_freq: HashMap<Rc<BitSet>, i32>, umi_length: usize, max_edits: i32) {
+    fn re_init(&mut self, umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32) {
         self.umi_freq = umi_freq;
         self.umi_length = umi_length;
     }
@@ -82,17 +75,11 @@ impl DataStruct for Combo {
         umi: &BitSet,
         k: i32,
         max_freq: i32,
-    ) -> std::collections::HashSet<Rc<BitSet>> {
-        let mut res: HashSet<Rc<BitSet>> = HashSet::new();
-        self.recursive_remove_near(
-            umi,
-            0,
-            k,
-            max_freq,
-            &mut BitSet::new_with_len(self.umi_length * crate::utils::read::ENCODING_LENGTH),
-            &mut res,
-            k,
-        );
+    ) -> std::collections::HashSet<&'a BitSet> {
+        let mut res: HashSet<&BitSet> = HashSet::new();
+        let curr = BitSet::new_with_len(self.umi_length * crate::utils::read::ENCODING_LENGTH);
+
+        self.recursive_remove_near(umi, 0, k, max_freq, curr, &mut res, k);
         res
     }
 

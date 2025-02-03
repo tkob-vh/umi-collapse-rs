@@ -35,11 +35,11 @@ pub fn char_equals(a: &BitSet, idx: usize, b: i32) -> bool {
     true
 }
 
-pub fn char_set(a: &mut BitSet, idx: usize, b: i32) -> &mut BitSet {
+pub fn char_set(a: &mut BitSet, idx: usize, b: i32) -> BitSet {
     for i in 0..read::ENCODING_LENGTH {
         a.set(idx * read::ENCODING_LENGTH + i, (b & (1 << i)) != 0);
     }
-    a
+    a.clone()
 }
 
 fn char_set_n_bit(a: &mut BitSet, idx: usize) -> &BitSet {
