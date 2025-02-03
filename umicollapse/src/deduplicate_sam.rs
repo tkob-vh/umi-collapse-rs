@@ -24,7 +24,7 @@ pub trait DeduplicateInterface {
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime);
 }
 
-pub struct DeduplicateSAM<A: Algorithm, M: Merge> {
+pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>> {
     algo: A,
     merge_algo: M,
     total_umi_count: usize,
@@ -37,7 +37,7 @@ pub struct DeduplicateSAM<A: Algorithm, M: Merge> {
     chimeric: i32,
 }
 
-impl<A: Algorithm, M: Merge> DeduplicateSAM<A, M> {
+impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
     pub fn new(args: &Cli, algo: A, merge_algo: M) -> Self {
         Self {
             algo,
@@ -53,7 +53,7 @@ impl<A: Algorithm, M: Merge> DeduplicateSAM<A, M> {
         }
     }
 }
-impl<A: Algorithm, M: Merge> DeduplicateInterface for DeduplicateSAM<A, M> {
+impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<A, M> {
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         // Set default umi pattern
         let regex = UcSAMRead::umi_pattern(&args.umi_separator);
@@ -69,7 +69,7 @@ impl<A: Algorithm, M: Merge> DeduplicateInterface for DeduplicateSAM<A, M> {
         let mut writer: UcWriter =
             UcWriter::new(&args.input, &args.output, &reader, args.paired, args);
 
-        let mut align: HashMap<Rc<Align>, HashMap<Rc<BitSet>, Rc<ReadFreq>>> =
+        let mut align: HashMap<Rc<Align>, HashMap<Rc<BitSet>, Rc<ReadFreq<UcSAMRead>>>> =
             HashMap::with_capacity(1 << 20);
 
         let mut record = Record::new();
@@ -114,42 +114,38 @@ impl<A: Algorithm, M: Merge> DeduplicateInterface for DeduplicateSAM<A, M> {
 
             let unclipped_pos = get_unclipped_pos(&record);
 
-            let alignment: Rc<Align> = if args.paired {
-                Rc::new(Align::Paired(PairedAlignment::new(
+            let alignment: Align = if args.paired {
+                Align::Paired(PairedAlignment::new(
                     record.is_reverse(),
                     unclipped_pos,
                     reader.header().tid2name(record.tid() as u32).to_vec(),
                     record.insert_size(),
-                )))
+                ))
             } else {
-                Rc::new(Align::Unpaired(Alignment::new(
+                Align::Unpaired(Alignment::new(
                     record.is_reverse(),
                     unclipped_pos,
                     reader.header().tid2name(record.tid() as u32).to_vec(),
-                )))
+                ))
             };
 
-            if !align.contains_key(&alignment) {
-                align.insert(alignment.clone(), HashMap::with_capacity(4));
-            }
-
             let umi_reads: &mut HashMap<_, _> = align
-                .get_mut(&alignment)
-                .expect("Failed to find the alignment");
+                .entry(Rc::new(alignment))
+                .or_insert_with(|| HashMap::with_capacity(4));
 
             let read = Rc::new(UcSAMRead::new(record.clone().into()));
-            let umi = Rc::new(read.get_umi(&regex));
+            let umi = read.get_umi(&regex);
 
             if self.umi_length == 0 {
                 self.umi_length = read.get_umi_length(&regex);
             }
 
-            match umi_reads.entry(umi.clone()) {
+            match umi_reads.entry(Rc::new(umi)) {
                 std::collections::hash_map::Entry::Vacant(e) => {
-                    e.insert(Rc::new(ReadFreq::new(read.clone(), 1)));
+                    e.insert(Rc::new(ReadFreq::new(read, 1)));
                 }
                 std::collections::hash_map::Entry::Occupied(mut e) => {
-                    let merged_read = self.merge_algo.merge(read.clone(), e.get().read.clone());
+                    let merged_read = self.merge_algo.merge(read, e.get().read.clone());
                     let new_freq = e.get().freq + 1;
                     e.insert(Rc::new(ReadFreq::new(merged_read, new_freq)));
                 }
@@ -177,7 +173,7 @@ impl<A: Algorithm, M: Merge> DeduplicateInterface for DeduplicateSAM<A, M> {
 
         let align_pos_count: usize = align.len();
 
-        let mut cluster_trackers: Option<HashMap<Rc<Align>, ClusterTracker>> =
+        let mut cluster_trackers: Option<HashMap<Rc<Align>, ClusterTracker<UcSAMRead>>> =
             if args.track_clusters {
                 Some(HashMap::new())
             } else {
@@ -446,7 +442,7 @@ impl UcWriter {
 #[allow(dead_code)]
 struct AlignReads {
     pub latest: i32,
-    pub umi_read: Option<HashMap<BitSet, ReadFreq>>,
+    pub umi_read: Option<HashMap<BitSet, ReadFreq<UcSAMRead>>>,
 }
 
 impl AlignReads {

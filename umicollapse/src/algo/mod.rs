@@ -4,13 +4,15 @@ pub mod directional;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::utils::{bitset::BitSet, cluster_tracker::ClusterTracker, read_freq::ReadFreq};
+use crate::utils::{
+    bitset::BitSet, cluster_tracker::ClusterTracker, read::UcRead, read_freq::ReadFreq,
+};
 
 pub trait Algorithm {
-    fn apply(
+    fn apply<R: UcRead>(
         &mut self,
-        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
-        tracker: &mut ClusterTracker,
+        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq<R>>>,
+        tracker: &mut ClusterTracker<R>,
         umi_length: usize,
         k: i32,
         percentage: f32,

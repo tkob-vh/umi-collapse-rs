@@ -4,7 +4,8 @@ use std::rc::Rc;
 use crate::{
     data::DataStruct,
     utils::{
-        bitset::BitSet, cluster_tracker::ClusterTracker, read_freq::ReadFreq, umi_freq::UmiFreq,
+        bitset::BitSet, cluster_tracker::ClusterTracker, read::UcRead, read_freq::ReadFreq,
+        umi_freq::UmiFreq,
     },
 };
 
@@ -19,11 +20,11 @@ impl<D: DataStruct> Directional<D> {
         Self { data }
     }
 
-    fn visit_and_remove(
+    fn visit_and_remove<R: UcRead>(
         &mut self,
         start_umi: Rc<BitSet>,
-        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
-        tracker: &mut ClusterTracker,
+        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq<R>>>,
+        tracker: &mut ClusterTracker<R>,
         k: i32,
         percentage: f32,
     ) {
@@ -46,10 +47,10 @@ impl<D: DataStruct> Directional<D> {
 }
 
 impl<D: DataStruct> Algorithm for Directional<D> {
-    fn apply(
+    fn apply<R: UcRead>(
         &mut self,
-        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq>>,
-        tracker: &mut ClusterTracker,
+        reads: &HashMap<Rc<BitSet>, Rc<ReadFreq<R>>>,
+        tracker: &mut ClusterTracker<R>,
         umi_length: usize,
         k: i32,
         percentage: f32,
@@ -59,7 +60,7 @@ impl<D: DataStruct> Algorithm for Directional<D> {
             .map(|(umi, rf)| (umi.clone(), rf.freq))
             .collect();
 
-        let mut freq: Vec<UmiFreq> = reads
+        let mut freq: Vec<UmiFreq<R>> = reads
             .iter()
             .map(|(umi, rf)| UmiFreq::new(umi.clone(), rf.clone()))
             .collect();

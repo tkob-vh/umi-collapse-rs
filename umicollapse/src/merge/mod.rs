@@ -3,16 +3,11 @@
 
 use std::rc::Rc;
 
-use downcast_rs::{impl_downcast, Downcast};
+use crate::utils::read::UcRead;
 
-pub trait Merge: Downcast {
-    fn merge(
-        &self,
-        a: Rc<dyn crate::utils::read::UcRead>,
-        b: Rc<dyn crate::utils::read::UcRead>,
-    ) -> Rc<dyn crate::utils::read::UcRead>;
+pub trait Merge<R: UcRead> {
+    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R>;
 }
-impl_downcast!(Merge);
 
 pub struct AnyMerge;
 
@@ -22,13 +17,9 @@ impl AnyMerge {
     }
 }
 
-impl Merge for AnyMerge {
+impl<R: UcRead> Merge<R> for AnyMerge {
     #[allow(unused_variables)]
-    fn merge(
-        &self,
-        a: Rc<dyn crate::utils::read::UcRead>,
-        b: Rc<dyn crate::utils::read::UcRead>,
-    ) -> Rc<dyn crate::utils::read::UcRead> {
+    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R> {
         a
     }
 }
@@ -41,12 +32,8 @@ impl AvgQualMerge {
     }
 }
 
-impl Merge for AvgQualMerge {
-    fn merge(
-        &self,
-        a: Rc<dyn crate::utils::read::UcRead>,
-        b: Rc<dyn crate::utils::read::UcRead>,
-    ) -> Rc<dyn crate::utils::read::UcRead> {
+impl<R: UcRead> Merge<R> for AvgQualMerge {
+    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R> {
         if a.get_avg_qual() >= b.get_avg_qual() {
             a
         } else {
@@ -63,12 +50,8 @@ impl MapQualMerge {
     }
 }
 
-impl Merge for MapQualMerge {
-    fn merge(
-        &self,
-        a: Rc<dyn crate::utils::read::UcRead>,
-        b: Rc<dyn crate::utils::read::UcRead>,
-    ) -> Rc<dyn crate::utils::read::UcRead> {
+impl<R: UcRead> Merge<R> for MapQualMerge {
+    fn merge(&self, a: Rc<R>, b: Rc<R>) -> Rc<R> {
         let sam_a: &crate::utils::read::UcSAMRead = a.as_any().downcast_ref().unwrap();
         let sam_b: &crate::utils::read::UcSAMRead = b.as_any().downcast_ref().unwrap();
 

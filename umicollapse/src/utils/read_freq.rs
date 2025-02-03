@@ -1,15 +1,15 @@
+use super::read::UcRead;
+
 use std::rc::Rc;
 
-use crate::utils;
-
 #[derive(Debug, Clone)]
-pub struct ReadFreq {
-    pub read: Rc<dyn utils::read::UcRead>,
+pub struct ReadFreq<R: UcRead> {
+    pub read: Rc<R>,
     pub freq: i32,
 }
 
-impl ReadFreq {
-    pub fn new(read: Rc<dyn utils::read::UcRead>, freq: i32) -> Self {
+impl<R: UcRead> ReadFreq<R> {
+    pub fn new(read: Rc<R>, freq: i32) -> Self {
         Self { read, freq }
     }
 }
