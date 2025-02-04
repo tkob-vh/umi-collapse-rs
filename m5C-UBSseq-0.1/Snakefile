@@ -309,6 +309,7 @@ rule dedup_mapping:
         dedup_bam = "{sample}/{sample}.mRNA.genome.mapped.dedup.bam",
         log = "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.log"
     threads: 16
+    # group: "{wildcards.sample}"
     benchmark:
         "benchmark/dedup_mapping/{sample}.tsv"
     shell:
