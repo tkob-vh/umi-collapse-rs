@@ -1,7 +1,7 @@
 //! The merge algorithms.
 //!
 
-use crate::utils::read::UcRead;
+use crate::utils::read::{UcRead, UcSAMRead};
 
 pub trait Merge<R: UcRead> {
     fn merge(&self, a: &R, b: &R) -> bool;
@@ -44,10 +44,8 @@ impl MapQualMerge {
     }
 }
 
-impl<R: UcRead> Merge<R> for MapQualMerge {
-    fn merge(&self, a: &R, b: &R) -> bool {
-        let sam_a: &crate::utils::read::UcSAMRead = a.as_any().downcast_ref().unwrap();
-        let sam_b: &crate::utils::read::UcSAMRead = b.as_any().downcast_ref().unwrap();
-        sam_a.get_map_qual() >= sam_b.get_map_qual()
+impl Merge<UcSAMRead> for MapQualMerge {
+    fn merge(&self, a: &UcSAMRead, b: &UcSAMRead) -> bool {
+        a.get_map_qual() >= b.get_map_qual()
     }
 }
