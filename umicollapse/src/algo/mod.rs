@@ -16,7 +16,5 @@ pub trait Algorithm {
         reads: &'align HashMap<BitSet, ReadFreq<R>>,
         tracker: &mut ClusterTracker<'align, 'align, R>,
         umi_length: usize,
-        k: i32,
-        percentage: f32,
     ) -> Vec<&'align R>;
 }
