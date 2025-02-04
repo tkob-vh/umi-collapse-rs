@@ -1,6 +1,6 @@
 use super::read::UcRead;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ReadFreq<R: UcRead> {
     pub read: R,
     pub freq: i32,

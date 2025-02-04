@@ -9,11 +9,20 @@ use crate::{
 
 use super::Algorithm;
 
-pub struct Adjacency {}
+#[allow(dead_code)]
+pub struct Adjacency {
+    k: i32,
+    percentage: f32,
+    track_cluster: bool,
+}
 
 impl Adjacency {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(args: &crate::cli::Cli) -> Self {
+        Self {
+            k: args.k,
+            percentage: args.percentage,
+            track_cluster: args.track_clusters,
+        }
     }
 }
 
@@ -24,8 +33,6 @@ impl Algorithm for Adjacency {
         reads: &'align HashMap<crate::utils::bitset::BitSet, crate::utils::read_freq::ReadFreq<R>>,
         tracker: &mut crate::utils::cluster_tracker::ClusterTracker<'align, 'align, R>,
         umi_length: usize,
-        k: i32,
-        percentage: f32,
     ) -> Vec<&'align R> {
         let mut freq: Vec<UmiFreq<R>> = reads
             .iter()
@@ -37,14 +44,14 @@ impl Algorithm for Adjacency {
         let m: HashMap<&BitSet, i32> = reads.iter().map(|(umi, rf)| (umi, rf.freq)).collect();
 
         let mut data: D = D::default();
-        data.re_init(m, umi_length, k);
+        data.re_init(m, umi_length, self.k);
         let mut res: Vec<&R> = Vec::new();
 
         for entry in freq {
             let umi = entry.umi;
             let read_freq = entry.read_freq;
             if data.contains(umi) {
-                tracker.add_all(&data.remove_near(umi, k, 0), reads);
+                tracker.add_all(&data.remove_near(umi, self.k, 0), reads);
                 tracker.track(umi, &read_freq.read);
                 res.push(&read_freq.read);
             }

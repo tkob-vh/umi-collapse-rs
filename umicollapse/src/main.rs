@@ -55,32 +55,32 @@ fn main() {
         ) {
             ("dir", "any") => Box::new(DeduplicateSAM::new(
                 &args,
-                Directional::new(),
+                Directional::new(&args),
                 AnyMerge::new(),
             )),
             ("dir", "avgqual") => Box::new(DeduplicateSAM::new(
                 &args,
-                Directional::new(),
+                Directional::new(&args),
                 AvgQualMerge::new(),
             )),
             ("dir", "mapqual") => Box::new(DeduplicateSAM::new(
                 &args,
-                Directional::new(),
+                Directional::new(&args),
                 MapQualMerge::new(),
             )),
             ("adj", "any") => Box::new(DeduplicateSAM::new(
                 &args,
-                Adjacency::new(),
+                Adjacency::new(&args),
                 AnyMerge::new(),
             )),
             ("adj", "avgqual") => Box::new(DeduplicateSAM::new(
                 &args,
-                Adjacency::new(),
+                Adjacency::new(&args),
                 AvgQualMerge::new(),
             )),
             ("adj", "mapqual") => Box::new(DeduplicateSAM::new(
                 &args,
-                Adjacency::new(),
+                Adjacency::new(&args),
                 MapQualMerge::new(),
             )),
             _ => panic!(

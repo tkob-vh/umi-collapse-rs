@@ -6,7 +6,7 @@ use crate::utils::{bitset::BitSet, char_equals, char_set};
 
 use super::DataStruct;
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct Combo<'bitset> {
     umi_freq: HashMap<&'bitset BitSet, i32>,
     umi_length: usize,

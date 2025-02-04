@@ -8,7 +8,7 @@ use crate::utils::{bitset::BitSet, umi_dist};
 
 use super::DataStruct;
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct Naive<'bitset> {
     umi_freq: HashMap<&'bitset BitSet, i32>,
 }

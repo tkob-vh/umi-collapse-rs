@@ -4,7 +4,7 @@
 use crate::utils::read::UcRead;
 
 pub trait Merge<R: UcRead> {
-    fn merge(&self, a: R, b: R) -> R;
+    fn merge(&self, a: &R, b: &R) -> bool;
 }
 
 pub struct AnyMerge;
@@ -17,8 +17,8 @@ impl AnyMerge {
 
 impl<R: UcRead> Merge<R> for AnyMerge {
     #[allow(unused_variables)]
-    fn merge(&self, a: R, b: R) -> R {
-        a
+    fn merge(&self, a: &R, b: &R) -> bool {
+        true
     }
 }
 
@@ -31,12 +31,8 @@ impl AvgQualMerge {
 }
 
 impl<R: UcRead> Merge<R> for AvgQualMerge {
-    fn merge(&self, a: R, b: R) -> R {
-        if a.get_avg_qual() >= b.get_avg_qual() {
-            a
-        } else {
-            b
-        }
+    fn merge(&self, a: &R, b: &R) -> bool {
+        a.get_avg_qual() >= b.get_avg_qual()
     }
 }
 
@@ -49,14 +45,9 @@ impl MapQualMerge {
 }
 
 impl<R: UcRead> Merge<R> for MapQualMerge {
-    fn merge(&self, a: R, b: R) -> R {
+    fn merge(&self, a: &R, b: &R) -> bool {
         let sam_a: &crate::utils::read::UcSAMRead = a.as_any().downcast_ref().unwrap();
         let sam_b: &crate::utils::read::UcSAMRead = b.as_any().downcast_ref().unwrap();
-
-        if sam_a.get_map_qual() >= sam_b.get_map_qual() {
-            a
-        } else {
-            b
-        }
+        sam_a.get_map_qual() >= sam_b.get_map_qual()
     }
 }

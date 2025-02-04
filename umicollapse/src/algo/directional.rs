@@ -12,26 +12,36 @@ use crate::{
 
 use super::Algorithm;
 
-pub struct Directional {}
+pub struct Directional {
+    k: i32,
+    percentage: f32,
+    track_cluster: bool,
+}
 
 impl Directional {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(args: &crate::cli::Cli) -> Self {
+        Self {
+            k: args.k,
+            percentage: args.percentage,
+            track_cluster: args.track_clusters,
+        }
     }
+
     fn visit_and_remove<'align, R: UcRead, D: DataStruct<'align>>(
+        &self,
         start_umi: &BitSet,
         reads: &HashMap<BitSet, ReadFreq<R>>,
         data: &mut D,
         tracker: &mut ClusterTracker<'align, 'align, R>,
-        k: i32,
-        percentage: f32,
     ) {
         // Calculate threshold exactly as Java does
-        let threshold = (percentage * (reads.get(start_umi).unwrap().freq + 1) as f32) as i32;
-        let near_umis = data.remove_near(start_umi, k, threshold);
+        let threshold = (self.percentage * (reads.get(start_umi).unwrap().freq + 1) as f32) as i32;
+        let near_umis = data.remove_near(start_umi, self.k, threshold);
 
         // Record to tracker
-        tracker.add_all(&near_umis, reads);
+        if self.track_cluster {
+            tracker.add_all(&near_umis, reads);
+        }
 
         // Recursive DFS, matching Java implementation
         for v in near_umis {
@@ -39,7 +49,7 @@ impl Directional {
                 continue;
             }
 
-            Directional::visit_and_remove(v, reads, data, tracker, k, percentage);
+            self.visit_and_remove(v, reads, data, tracker);
         }
     }
 }
@@ -50,8 +60,6 @@ impl Algorithm for Directional {
         reads: &'align HashMap<BitSet, ReadFreq<R>>,
         tracker: &mut ClusterTracker<'align, 'align, R>,
         umi_length: usize,
-        k: i32,
-        percentage: f32,
     ) -> Vec<&'align R> {
         let data_member: HashMap<&BitSet, i32> =
             reads.iter().map(|(umi, rf)| (umi, rf.freq)).collect();
@@ -64,7 +72,7 @@ impl Algorithm for Directional {
         umi_freqs.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
 
         let mut data: D = D::default();
-        data.re_init(data_member, umi_length, k);
+        data.re_init(data_member, umi_length, self.k);
 
         let mut res: Vec<&R> = Vec::new();
 
@@ -72,8 +80,10 @@ impl Algorithm for Directional {
             let umi = entry.umi;
             let read_freq = entry.read_freq;
             if data.contains(umi) {
-                Directional::visit_and_remove(umi, reads, &mut data, tracker, k, percentage);
-                tracker.track(umi, &read_freq.read);
+                self.visit_and_remove(umi, reads, &mut data, tracker);
+                if self.track_cluster {
+                    tracker.track(umi, &read_freq.read);
+                }
                 res.push(&read_freq.read);
             }
         }

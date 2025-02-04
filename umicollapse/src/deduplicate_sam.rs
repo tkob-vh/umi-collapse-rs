@@ -147,9 +147,13 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
                     e.insert(ReadFreq::new(read, 1));
                 }
                 std::collections::hash_map::Entry::Occupied(mut e) => {
-                    let merged_read = self.merge_algo.merge(read, e.get().read.clone());
+                    let keep_existing = self.merge_algo.merge(&e.get().read, &read);
                     let new_freq = e.get().freq + 1;
-                    e.insert(ReadFreq::new(merged_read, new_freq));
+                    if !keep_existing {
+                        e.insert(ReadFreq::new(read, new_freq));
+                    } else {
+                        e.get_mut().freq = new_freq;
+                    }
                 }
             }
         }
@@ -187,13 +191,9 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
 
             // TODO: remove tracker logic if args.track_clusters is false.
             // TODO: fix the Naive
-            let dedupped = self.algo.apply::<UcSAMRead, Naive>(
-                umi_reads,
-                &mut curr_trakcer,
-                self.umi_length,
-                args.k,
-                args.percentage,
-            );
+            let dedupped =
+                self.algo
+                    .apply::<UcSAMRead, Naive>(umi_reads, &mut curr_trakcer, self.umi_length);
 
             curr_trakcer.set_offset(self.deduped_count);
 
@@ -253,7 +253,6 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
 }
 const HASH_CONST: i32 = 31;
 
-#[derive(Clone)]
 struct ReverseRead {
     coord: i64,
     ref_str: Vec<u8>,
@@ -459,13 +458,13 @@ impl AlignReads {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Align {
     Unpaired(Alignment),
     Paired(PairedAlignment),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Alignment {
     strand: bool,
     coord: i64,
@@ -526,7 +525,7 @@ impl PartialOrd for Alignment {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(dead_code)]
 struct PairedAlignment {
     strand: bool,
