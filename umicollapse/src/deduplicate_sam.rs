@@ -189,7 +189,6 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
         for (alignment, umi_reads) in align.iter() {
             let mut curr_trakcer = ClusterTracker::new(args.track_clusters);
 
-            // TODO: remove tracker logic if args.track_clusters is false.
             // TODO: fix the Naive
             let dedupped =
                 self.algo

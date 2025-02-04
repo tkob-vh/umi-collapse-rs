@@ -3,7 +3,6 @@
 
 use std::{collections::HashMap, fmt::Debug};
 
-use downcast_rs::{impl_downcast, Downcast};
 use lazy_static::lazy_static;
 use pcre2::bytes::{Regex, RegexBuilder};
 use tracing::info;
@@ -40,12 +39,11 @@ lazy_static! {
     };
 }
 
-pub trait UcRead: Downcast + Debug {
+pub trait UcRead: Debug {
     fn get_avg_qual(&self) -> i32;
     fn get_umi(&self, pattern: &Regex) -> utils::bitset::BitSet;
     fn get_umi_length(&self, pattern: &Regex) -> usize;
 }
-impl_downcast!(UcRead);
 
 #[derive(Debug, Clone)]
 pub struct UcSAMRead {
