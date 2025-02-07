@@ -30,7 +30,7 @@ impl Directional {
     fn visit_and_remove<'align, R: UcRead, D: DataStruct<'align>>(
         &self,
         start_umi: &BitSet,
-        reads: &HashMap<BitSet, ReadFreq<R>>,
+        reads: &HashMap<&BitSet, &ReadFreq<R>>,
         data: &mut D,
         tracker: &mut ClusterTracker<'align, 'align, R>,
     ) {
@@ -57,12 +57,12 @@ impl Directional {
 impl Algorithm for Directional {
     fn apply<'align, R: UcRead, D: DataStruct<'align>>(
         &mut self,
-        reads: &'align HashMap<BitSet, ReadFreq<R>>,
+        reads: &'align HashMap<&'align BitSet, &'align ReadFreq<R>>,
         tracker: &mut ClusterTracker<'align, 'align, R>,
         umi_length: usize,
     ) -> Vec<&'align R> {
         let data_member: HashMap<&BitSet, i32> =
-            reads.iter().map(|(umi, rf)| (umi, rf.freq)).collect();
+            reads.iter().map(|(&umi, rf)| (umi, rf.freq)).collect();
 
         let mut umi_freqs: Vec<UmiFreq<R>> = reads
             .iter()

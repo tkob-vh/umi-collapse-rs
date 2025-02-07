@@ -30,7 +30,10 @@ impl Algorithm for Adjacency {
     #[allow(unused_variables)]
     fn apply<'align, R: UcRead, D: DataStruct<'align>>(
         &mut self,
-        reads: &'align HashMap<crate::utils::bitset::BitSet, crate::utils::read_freq::ReadFreq<R>>,
+        reads: &'align HashMap<
+            &crate::utils::bitset::BitSet,
+            &crate::utils::read_freq::ReadFreq<R>,
+        >,
         tracker: &mut crate::utils::cluster_tracker::ClusterTracker<'align, 'align, R>,
         umi_length: usize,
     ) -> Vec<&'align R> {
@@ -41,7 +44,7 @@ impl Algorithm for Adjacency {
 
         freq.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
 
-        let m: HashMap<&BitSet, i32> = reads.iter().map(|(umi, rf)| (umi, rf.freq)).collect();
+        let m: HashMap<&BitSet, i32> = reads.iter().map(|(&umi, rf)| (umi, rf.freq)).collect();
 
         let mut data: D = D::default();
         data.re_init(m, umi_length, self.k);

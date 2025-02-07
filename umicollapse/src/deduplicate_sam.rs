@@ -8,6 +8,7 @@ use std::time::SystemTime;
 
 use rust_htslib::bam::{Format, Header, HeaderView, Read, Reader, Record};
 use tracing::{debug, info};
+use typed_arena::Arena;
 
 use crate::algo::Algorithm;
 use crate::cli::Cli;
@@ -37,6 +38,9 @@ pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>> {
     unmapped: i32,
     unpaired: i32,
     chimeric: i32,
+    a_arena: Arena<Align>,
+    b_arena: Arena<BitSet>,
+    r_arena: Arena<ReadFreq<UcSAMRead>>,
 }
 
 impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
@@ -52,6 +56,9 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
             unpaired: 0,
             unmapped: 0,
             chimeric: 0,
+            a_arena: Arena::with_capacity(1 << 20),
+            b_arena: Arena::with_capacity(1 << 20),
+            r_arena: Arena::with_capacity(1 << 20),
         }
     }
 }
@@ -71,7 +78,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
         let mut writer: UcWriter =
             UcWriter::new(&args.input, &args.output, &reader, args.paired, args);
 
-        let mut align: HashMap<Align, HashMap<BitSet, ReadFreq<UcSAMRead>>> =
+        let mut align: HashMap<&Align, HashMap<&BitSet, &ReadFreq<UcSAMRead>>> =
             HashMap::with_capacity(1 << 20);
 
         let mut record = Record::new();
@@ -116,19 +123,19 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
 
             let unclipped_pos = get_unclipped_pos(&record);
 
-            let alignment: Align = if args.paired {
-                Align::Paired(PairedAlignment::new(
+            let alignment: &mut Align = if args.paired {
+                self.a_arena.alloc(Align::Paired(PairedAlignment::new(
                     record.is_reverse(),
                     unclipped_pos,
                     reader.header().tid2name(record.tid() as u32).to_vec(),
                     record.insert_size(),
-                ))
+                )))
             } else {
-                Align::Unpaired(Alignment::new(
+                self.a_arena.alloc(Align::Unpaired(Alignment::new(
                     record.is_reverse(),
                     unclipped_pos,
                     reader.header().tid2name(record.tid() as u32).to_vec(),
-                ))
+                )))
             };
 
             let umi_reads: &mut HashMap<_, _> = align
@@ -141,19 +148,24 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
                 self.umi_length = read.get_umi_length(&regex);
             }
 
-            let umi = read.get_umi(args.umi_separator, self.umi_length);
+            let umi = self
+                .b_arena
+                .alloc(read.get_umi(args.umi_separator, self.umi_length));
 
             match umi_reads.entry(umi) {
                 std::collections::hash_map::Entry::Vacant(e) => {
-                    e.insert(ReadFreq::new(read, 1));
+                    e.insert(self.r_arena.alloc(ReadFreq::new(read, 1)));
                 }
                 std::collections::hash_map::Entry::Occupied(mut e) => {
                     let keep_existing = self.merge_algo.merge(&e.get().read, &read);
                     let new_freq = e.get().freq + 1;
                     if !keep_existing {
-                        e.insert(ReadFreq::new(read, new_freq));
+                        e.insert(self.r_arena.alloc(ReadFreq::new(read, new_freq)));
                     } else {
-                        e.get_mut().freq = new_freq;
+                        let freq_p = *e.get() as *const _ as *mut ReadFreq<UcSAMRead>;
+                        unsafe {
+                            (*freq_p).freq = new_freq;
+                        }
                     }
                 }
             }

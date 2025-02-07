@@ -75,7 +75,7 @@ impl<'a, 'b, R: UcRead> ClusterTracker<'a, 'b, R> {
     pub fn add_all(
         &mut self,
         s: &HashSet<&'a BitSet>,
-        reads: &HashMap<BitSet, utils::read_freq::ReadFreq<R>>,
+        reads: &HashMap<&BitSet, &utils::read_freq::ReadFreq<R>>,
     ) {
         if self.track {
             self.temp.extend(s.iter().cloned());
