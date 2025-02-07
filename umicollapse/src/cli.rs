@@ -28,8 +28,8 @@ pub struct Cli {
     #[arg[long = "num-threads", default_value_t = 1]]
     pub num_threads: usize,
     /// Separator string between the UMI and the rest of the read header. Default: _
-    #[arg(long = "umi_sep", default_value = "_")]
-    pub umi_separator: String,
+    #[arg(long = "umi_sep", default_value_t = b'_')]
+    pub umi_separator: u8,
     /// Deduplication algorithm. Either cc for connected components, adj for adjacency, or dir for
     /// directional. Default: dir.
     #[arg(long = "algo", default_value = "dir")]

@@ -4,6 +4,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use lazy_static::lazy_static;
+use memchr::memchr;
 use pcre2::bytes::{Regex, RegexBuilder};
 use tracing::info;
 
@@ -41,7 +42,7 @@ lazy_static! {
 
 pub trait UcRead: Debug {
     fn get_avg_qual(&self) -> i32;
-    fn get_umi(&self, pattern: &Regex) -> utils::bitset::BitSet;
+    fn get_umi(&self, sep: u8, umi_length: usize) -> utils::bitset::BitSet;
     fn get_umi_length(&self, pattern: &Regex) -> usize;
 }
 
@@ -61,9 +62,9 @@ impl UcSAMRead {
         }
     }
 
-    pub fn umi_pattern(sep: &str) -> Regex {
+    pub fn umi_pattern(sep: u8) -> Regex {
         // Add debug logging
-        let pattern = format!(r"^(?:.*?){}([ATCGN]+)(?:.*?)$", sep);
+        let pattern = format!(r"^(?:.*?){}([ATCGN]+)(?:.*?)$", sep as char);
         info!("UMI pattern: {}", pattern);
 
         RegexBuilder::new()
@@ -93,23 +94,20 @@ impl UcRead for UcSAMRead {
             .len()
     }
 
-    fn get_umi(&self, pattern: &Regex) -> utils::bitset::BitSet {
+    fn get_umi(&self, sep: u8, umi_length: usize) -> utils::bitset::BitSet {
         let read_name = self.record.qname();
 
-        let caps = pattern
-            .captures(read_name)
-            .expect("No UMI pattern match found in read name");
+        if let Some(pos) = memchr(sep, read_name) {
+            let umi = &read_name[pos + 1..pos + 1 + umi_length];
 
-        let umi = caps
-            .unwrap()
-            .get(1)
-            .expect("No UMI group found in pattern match")
-            .as_bytes();
+            if umi.is_empty() {
+                panic!("Empty UMI sequence extracted");
+            }
 
-        if umi.is_empty() {
-            panic!("Empty UMI sequence extracted");
+            utils::to_bitset(std::str::from_utf8(umi).unwrap())
+        } else {
+            panic!("failed to get the umi");
         }
-        utils::to_bitset(std::str::from_utf8(umi).unwrap())
     }
 
     fn get_avg_qual(&self) -> i32 {

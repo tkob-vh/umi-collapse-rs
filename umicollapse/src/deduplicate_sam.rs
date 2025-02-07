@@ -58,7 +58,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
 impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<A, M> {
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         // Set default umi pattern
-        let regex = UcSAMRead::umi_pattern(&args.umi_separator);
+        let regex = UcSAMRead::umi_pattern(args.umi_separator);
 
         // Construct the reader.
         let mut reader = Reader::from_path(&args.input).expect("Invalid input path");
@@ -136,11 +136,12 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
                 .or_insert_with(|| HashMap::with_capacity(4));
 
             let read = UcSAMRead::new(record.clone());
-            let umi = read.get_umi(&regex);
 
             if self.umi_length == 0 {
                 self.umi_length = read.get_umi_length(&regex);
             }
+
+            let umi = read.get_umi(args.umi_separator, self.umi_length);
 
             match umi_reads.entry(umi) {
                 std::collections::hash_map::Entry::Vacant(e) => {
