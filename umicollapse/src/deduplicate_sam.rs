@@ -44,6 +44,14 @@ pub struct DeduplicateSAM<A: Algorithm, M: Merge<UcSAMRead>> {
 
 impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
     pub fn new(args: &Cli, algo: A, merge_algo: M) -> Self {
+        let capacity = (1 << 27)
+            * (size_of::<Align>() + size_of::<BitSet>() + size_of::<ReadFreq<UcSAMRead>>());
+
+        debug!(
+            "The initial capacity of the arena: {} GB",
+            capacity / (1024 * 1024)
+        );
+
         Self {
             algo,
             merge_algo,
@@ -55,7 +63,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
             unpaired: 0,
             unmapped: 0,
             chimeric: 0,
-            arena: Bump::with_capacity(1 << 27),
+            arena: Bump::with_capacity(capacity),
         }
     }
 }
