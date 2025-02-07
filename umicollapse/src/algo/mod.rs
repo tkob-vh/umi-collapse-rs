@@ -13,7 +13,7 @@ use crate::{
 pub trait Algorithm {
     fn apply<'align, R: UcRead, D: DataStruct<'align>>(
         &mut self,
-        reads: &'align HashMap<BitSet, ReadFreq<R>>,
+        reads: &'align HashMap<&'align BitSet, &'align ReadFreq<R>>,
         tracker: &mut ClusterTracker<'align, 'align, R>,
         umi_length: usize,
     ) -> Vec<&'align R>;
