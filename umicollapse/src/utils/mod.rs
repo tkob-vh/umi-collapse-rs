@@ -60,24 +60,25 @@ pub fn char_get(a: &BitSet, idx: usize) -> i32 {
     res
 }
 
-pub fn to_bitset(s: &str) -> BitSet {
+pub fn to_bitset(s: &[u8]) -> BitSet {
     // Calculate the total number of bits needed
     let total_bits = s.len() * read::ENCODING_LENGTH;
 
     // Create BitSet with the correct length
     let mut res = BitSet::new_with_len(total_bits);
 
-    for (i, c) in s.chars().enumerate() {
-        if let Some(&encoding) = read::ENCODING_MAP.get(&c) {
+    for (i, c) in s.iter().enumerate() {
+        if let Some(&encoding) = read::ENCODING_MAP.get(c) {
             char_set(&mut res, i, encoding);
 
-            if c == read::UNDETERMINED_CHAR {
+            if c == &read::UNDETERMINED_CHAR {
                 char_set_n_bit(&mut res, i);
             }
         } else {
             panic!("Unknown character in UMI sequence: {}", c);
         }
     }
+
     res
 }
 
