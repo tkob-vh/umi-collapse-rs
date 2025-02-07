@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::time::SystemTime;
 
+use ::memchr::arch::x86_64::avx2::memchr::One;
 use bumpalo::Bump;
 use rust_htslib::bam::{Format, Header, HeaderView, Read, Reader, Record};
 use tracing::{debug, info};
@@ -62,6 +63,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         // Set default umi pattern
         let regex = UcSAMRead::umi_pattern(args.umi_separator);
+        let one_search = One::new(args.umi_separator).expect("failed to create a new searcher");
 
         // Construct the reader.
         let mut reader = Reader::from_path(&args.input).expect("Invalid input path");
@@ -144,9 +146,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<
                 self.umi_length = read.get_umi_length(&regex);
             }
 
-            let umi = self
-                .arena
-                .alloc(read.get_umi(args.umi_separator, self.umi_length));
+            let umi = self.arena.alloc(read.get_umi(&one_search, self.umi_length));
 
             match umi_reads.entry(umi) {
                 std::collections::hash_map::Entry::Vacant(e) => {

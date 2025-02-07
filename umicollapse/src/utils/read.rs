@@ -4,7 +4,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use lazy_static::lazy_static;
-use memchr::memchr;
+use memchr::arch::x86_64::avx2::memchr::One;
 use pcre2::bytes::{Regex, RegexBuilder};
 use tracing::info;
 
@@ -42,7 +42,7 @@ lazy_static! {
 
 pub trait UcRead: Debug {
     fn get_avg_qual(&self) -> i32;
-    fn get_umi(&self, sep: u8, umi_length: usize) -> utils::bitset::BitSet;
+    fn get_umi(&self, one: &One, umi_length: usize) -> utils::bitset::BitSet;
     fn get_umi_length(&self, pattern: &Regex) -> usize;
 }
 
@@ -93,10 +93,10 @@ impl UcRead for UcSAMRead {
             .len()
     }
 
-    fn get_umi(&self, sep: u8, umi_length: usize) -> utils::bitset::BitSet {
+    fn get_umi(&self, one: &One, umi_length: usize) -> utils::bitset::BitSet {
         let read_name = self.record.qname();
 
-        if let Some(pos) = memchr(sep, read_name) {
+        if let Some(pos) = one.find(read_name) {
             let umi = &read_name[pos + 1..pos + 1 + umi_length];
 
             if umi.is_empty() {
