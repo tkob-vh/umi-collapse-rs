@@ -15,17 +15,17 @@ pub const ENCODING_LENGTH: usize = 3;
 #[allow(dead_code)]
 pub const ALPHABET: [char; 5] = ['A', 'T', 'C', 'G', 'N'];
 pub const UNDETERMINED: i32 = 0b100;
-pub const UNDETERMINED_CHAR: char = 'N';
+pub const UNDETERMINED_CHAR: u8 = b'N';
 #[allow(dead_code)]
 pub const ANY: i32 = 0b111;
 
 lazy_static! {
-    pub static ref ENCODING_MAP: HashMap<char, i32> = {
+    pub static ref ENCODING_MAP: HashMap<u8, i32> = {
         let mut m = HashMap::new();
-        m.insert('A', 0b000);
-        m.insert('T', 0b101);
-        m.insert('C', 0b110);
-        m.insert('G', 0b011);
+        m.insert(b'A', 0b000);
+        m.insert(b'T', 0b101);
+        m.insert(b'C', 0b110);
+        m.insert(b'G', 0b011);
         m.insert(UNDETERMINED_CHAR, UNDETERMINED);
         m
     };
@@ -70,7 +70,6 @@ impl UcSAMRead {
         RegexBuilder::new()
             .caseless(true)
             .multi_line(false)
-            .jit(true)
             .build(&pattern)
             .expect("Failed to build UMI pattern regex")
     }
@@ -104,7 +103,7 @@ impl UcRead for UcSAMRead {
                 panic!("Empty UMI sequence extracted");
             }
 
-            utils::to_bitset(std::str::from_utf8(umi).unwrap())
+            utils::to_bitset(umi)
         } else {
             panic!("failed to get the umi");
         }
