@@ -19,7 +19,7 @@ Run the `build.sh` to build `hisat-3n`, `samtools` and `umicollapse`.
 
 ## Reference Indexes Construction
 > [!NOTE]
-> You can just skip this step if you have already downloaded the data and build the indexes.
+> You can just skip this step if you have already downloaded the data and built the indexes.
 
 Download the reference dataset for [dna](https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz) and [ncrna](https://ftp.ensembl.org/pub/release-113/fasta/homo_sapiens/ncrna/Homo_sapiens.GRCh38.ncrna.fa.gz)
 
