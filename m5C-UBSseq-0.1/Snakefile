@@ -80,6 +80,8 @@ rule cutadapt_SE:
     params:
         library=lambda wildcards: SAMPLE2LIB[wildcards.sample],
     threads: 20
+    benchmark:
+        "benchmark/data_clean/{sample}.tsv"
     shell:
         """
         cutseq -t {threads} -A {params.library} -m 20 --trim-polyA --ensure-inline-barcode --auto-rc -o {output.fastq_cut} -s {output.fastq_tooshort} -u {output.fastq_untrimmed} --json-file {output.report} {input} 
@@ -105,8 +107,10 @@ rule cutadapt_PE:
         ],
         report="report_reads/trimming/{sample}_{rn}.report",
     params:
-        library=lambda wildcards: SAMPLE2LIB[wildcards.sample],
-    threads: 20
+        index=REF["ncrna"]["fa"],
+    threads: 16
+    benchmark:
+        "benchmark/rRNA_tRNA_alignment/{sample}.tsv"
     shell:
         """
         cutseq -t {threads} -A {params.library} -m 20 --trim-polyA --ensure-inline-barcode --auto-rc -o {output.fastq_cut} -s {output.fastq_tooshort} -u {output.fastq_untrimmed} --json-file {output.report} {input} 
@@ -122,106 +126,10 @@ rule prepare_genes_index:
     input:
         CUSTOMIZED_GENES,
     output:
-        fa="prepared_genes/genes.fa",
-        index="prepared_genes/genes.3n.CT.1.ht2",
-    params:
-        index="prepared_genes/genes",
-    threads: 12
-    shell:
-        """
-        cat {input} >{output.fa}
-        rm -f `dirname {output.index}`/`basename {output.index} ".CT.1.ht2"`.*.ht2
-        ~/tools/hisat2/hisat-3n-build -p 12 --base-change C,T {output.fa} {params.index}
-        """
-
-
-rule build_gene_index:
-    input:
-        fa="prepared_genes/genes.fa",
-    output:
-        fai="prepared_genes/genes.fa.fai",
-    shell:
-        """
-        samtools faidx {output.fa}
-        """
-
-
-rule generate_saf_gene:
-    input:
-        fai="prepared_genes/genes.fa.fai",
-    output:
-        saf="prepared_genes/genes.saf",
-    shell:
-        """
-        awk 'BEGIN{{OFS="\\t"}}{{print $1,$1,0,$2,"+"}}' {input} > {output}
-        """
-
-
-################################
-# Mapping (SE mapping mode)
-################################
-
-
-rule hisat2_3n_mapping_contamination_SE:
-    input:
-        TEMPDIR / "cut_adapter_SE/{sample}_{rn}_R1.fq.gz",
-    output:
-        mapped=temp(TEMPDIR / "mapping_unsorted_SE/{sample}_{rn}.contamination.bam"),
-        unmapped=temp(TEMPDIR / "mapping_discarded_SE/{sample}_{rn}.contamination.bam"),
-        summary="report_reads/mapping/{sample}_{rn}.contamination.summary",
-    params:
-        index=REF["contamination"]["hisat3n"],
-    threads: 24
-    shell:
-        """
-        {BIN[hisat3n]} --index {params.index} -p {threads} --summary-file {output.summary} --new-summary -q -U {input[0]} --directional-mapping --base-change C,T --mp 8,2 --no-spliced-alignment | \
-            {BIN[samtools]} view -@ {threads} -e '!flag.unmap' -O BAM -U {output.unmapped} -o {output.mapped}
-        """
-
-
-rule hisat2_3n_mapping_genes_SE:
-    input:
-        TEMPDIR / "unmapped_internal_SE/{sample}_{rn}_R1.contamination.fq.gz",
-        "prepared_genes/genes.3n.CT.1.ht2" if CUSTOMIZED_GENES else [],
-    output:
-        mapped=temp(TEMPDIR / "mapping_unsorted_SE/{sample}_{rn}.genes.bam"),
-        unmapped=temp(TEMPDIR / "mapping_discarded_SE/{sample}_{rn}.genes.bam"),
-        summary="report_reads/mapping/{sample}_{rn}.genes.summary",
-    params:
-        index=(
-            REF["genes"]["hisat3n"] if not CUSTOMIZED_GENES else "prepared_genes/genes"
-        ),
-    threads: 24
-    shell:
-        """
-        {BIN[hisat3n]} --index {params.index} -p {threads} --summary-file {output.summary} --new-summary -q -U {input[0]} --directional-mapping --all --norc --base-change C,T --mp 8,2 --no-spliced-alignment | \
-            {BIN[samtools]} view -@ {threads} -e '!flag.unmap' -O BAM -U {output.unmapped} -o {output.mapped}
-        """
-
-
-rule hisat2_3n_mapping_genome_SE:
-    input:
-        TEMPDIR / "unmapped_internal_SE/{sample}_{rn}_R1.genes.fq.gz",
-    output:
-        mapped=temp(TEMPDIR / "mapping_unsorted_SE/{sample}_{rn}.genome.bam"),
-        unmapped=temp(TEMPDIR / "mapping_discarded_SE/{sample}_{rn}.genome.bam"),
-        summary="report_reads/mapping/{sample}_{rn}.genome.summary",
-    params:
-        index=REF["genome"]["hisat3n"],
-    threads: 24
-    shell:
-        """
-        {BIN[hisat3n]} --index {params.index} -p {threads} --summary-file {output.summary} --new-summary -q -U {input[0]} --directional-mapping --base-change C,T --pen-noncansplice 20 --mp 4,1 | \
-            {BIN[samtools]} view -@ {threads} -e '!flag.unmap' -O BAM -U {output.unmapped} -o {output.mapped}
-        """
-
-
-rule extract_unmap_bam_internal_SE:
-    input:
-        TEMPDIR / "mapping_discarded_SE/{sample}_{rn}.{reftype}.bam",
-    output:
-        temp(TEMPDIR / "unmapped_internal_SE/{sample}_{rn}_R1.{reftype}.fq.gz"),
-    threads: 4
+        "{sample}/{sample}.mRNA.fastq",
+    threads: 16
+    benchmark:
+        "benchmark/samtools_after_rRNA_tRNA_alignment/{sample}.tsv"
     shell:
         """
         {BIN[samtools]} fastq -@ {threads} -0 {output} {input}
@@ -242,8 +150,10 @@ rule hisat2_3n_mapping_contamination_PE:
         unmapped=temp(TEMPDIR / "mapping_discarded_PE/{sample}_{rn}.contamination.bam"),
         summary="report_reads/mapping/{sample}_{rn}.contamination.summary",
     params:
-        index=REF["contamination"]["hisat3n"],
-    threads: 24
+        index=REF["genome"]["fa"],
+    threads: 16
+    benchmark:
+        "benchmark/genome_alignment/{sample}.tsv"
     shell:
         """
         {BIN[hisat3n]} --index {params.index} -p {threads} --summary-file {output.summary} --new-summary -q -1 {input[0]} -2 {input[1]} --directional-mapping --base-change C,T --mp 8,2 --no-spliced-alignment | \
@@ -257,14 +167,10 @@ rule hisat2_3n_mapping_genes_PE:
         TEMPDIR / "unmapped_internal_PE/{sample}_{rn}_R2.contamination.fq.gz",
         "prepared_genes/genes.3n.CT.1.ht2" if CUSTOMIZED_GENES else [],
     output:
-        mapped=temp(TEMPDIR / "mapping_unsorted_PE/{sample}_{rn}.genes.bam"),
-        unmapped=temp(TEMPDIR / "mapping_discarded_PE/{sample}_{rn}.genes.bam"),
-        summary="report_reads/mapping/{sample}_{rn}.genes.summary",
-    params:
-        index=(
-            REF["genes"]["hisat3n"] if not CUSTOMIZED_GENES else "prepared_genes/genes"
-        ),
-    threads: 24
+        "{sample}/{sample}.mRNA.genome.mapped.sorted.bam"
+    threads: 16
+    benchmark:
+        "benchmark/samtools_sort/{sample}.tsv"
     shell:
         """
         {BIN[hisat3n]} --index {params.index} -p {threads} --summary-file {output.summary} --new-summary -q -1 {input[0]} -2 {input[1]} --directional-mapping --all --norc --base-change C,T --mp 8,2 --no-spliced-alignment | \
@@ -400,42 +306,34 @@ rule dedup_mapping:
     input:
         bam=TEMPDIR / "combined_mapping/{sample}.{ref}.bam",
     output:
-        bam=INTERNALDIR / "aligned_bam/{sample}.{ref}.bam",
-        txt="report_reads/dedup/{sample}.{ref}.log",
-    params:
-        tmp=os.environ["TMPDIR"],
-    threads: 20
-    run:
-        if WITH_UMI:
-            shell(
-                """
-            /software/java-15.0.2-el8-x86_64/bin/java -server -Xms8G -Xmx40G -Xss100M -Djava.io.tmpdir={params.tmp} -jar {BIN[umicollapse]} bam \
-                -t 2 -T {threads} --data naive --merge avgqual --two-pass -i {input.bam} -o {output.bam} >{output.txt}
-            """
-            )
-        elif MARKDUP:
-            shell(
-                """
-                ~/tools/jdk8u322-b06-jre/bin/java -Xmx36G -jar ~/tools/gatk-4.2.5.0/gatk-package-4.2.5.0-local.jar MarkDuplicates \
-                    -I {input} -O {output.bam} -M {output.txt} \
-                    --DUPLICATE_SCORING_STRATEGY SUM_OF_BASE_QUALITIES --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY SILENT --TMP_DIR {params.tmp}
-            """
-            )
-        else:
-            shell(
-                """
-                cp {input.bam} {output.bam}
-                touch {output.txt}
-            """
-            )
-
+        dedup_bam = "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.bam",
+        log = "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.log"
+    threads: 16
+    benchmark:
+        "benchmark/dedup_mapping/{sample}.tsv"
+    shell:
+        """
+        java -server -Xms8G -Xmx40G -Xss100M -Djava.io.tmpdir={wildcards.sample} \
+                -jar {BIN[umicollapse]} \
+                bam \
+                -t 2 \
+                -T {threads} \
+                --data naive \
+                --merge avgqual \
+                --two-pass \
+                -i {input.bam} \
+                -o {output.dedup_bam} \
+                > {output.log}
+        """
 
 rule dedup_index:
     input:
         bam=INTERNALDIR / "aligned_bam/{sample}.{ref}.bam",
     output:
-        bai=INTERNALDIR / "aligned_bam/{sample}.{ref}.bam.bai",
-    threads: 6
+        bai = "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.bam.bai",
+    threads: 8
+    benchmark:
+        "benchmark/dedup_index/{sample}.tsv"
     shell:
         """
         {BIN[samtools]} index -@ {threads} {input}
@@ -491,8 +389,10 @@ rule hisat2_3n_filtering:
     input:
         INTERNALDIR / "aligned_bam/{sample}.{ref}.bam",
     output:
-        temp(TEMPDIR / "hisat_converted/{sample}.{ref}.bam"),
-    threads: 4
+        "{sample}/{sample}.mRNA.genome.mapped.sorted.dedup.filtered.bam",
+    threads: 8
+    benchmark:
+        "benchmark/hisat2_3n_filtering/{sample}.tsv"
     shell:
         """
         {BIN[samtools]} view -@ {threads} -e "[XM] * 20 <= (qlen-sclen) && [Zf] <= 3 && 3 * [Zf] <= [Zf] + [Yf]" {input} -O BAM -o {output}
@@ -537,15 +437,10 @@ rule hisat2_3n_calling_filtered_multi:
 
 rule join_pileup:
     input:
-        lambda wildcards: [
-            TEMPDIR / f"{t}/{wildcards.sample}.{wildcards.ref}.tsv.gz"
-            for t in [
-                "unfiltered_unique",
-                "unfiltered_multi",
-                "filtered_unique",
-                "filtered_multi",
-            ]
-        ],
+        "{sample}/{sample}_unfiltered_uniq.tsv.gz",
+        "{sample}/{sample}_unfiltered_multi.tsv.gz",
+        "{sample}/{sample}_filtered_uniq.tsv.gz",
+        "{sample}/{sample}_filtered_multi.tsv.gz",
     output:
         INTERNALDIR / "count_sites/{sample}.{ref}.arrow",
     threads: 6
