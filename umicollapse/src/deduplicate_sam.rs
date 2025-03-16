@@ -49,7 +49,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
 
         debug!(
             "The initial capacity of the arena: {} GB",
-            capacity / (1024 * 1024)
+            capacity / (1024 * 1024 * 1024)
         );
 
         Self {
