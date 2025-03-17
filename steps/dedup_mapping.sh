@@ -9,6 +9,6 @@
 ./umicollapse/target/release/umicollapse --mode bam \
   --data naive \
   --merge avgqual \
-  --num-threads 64 \
+  --num-threads 16 \
   -i "${dataout}/${srr}/${srr}.mRNA.genome.mapped.sorted.bam" \
   -o "${dataout}/${srr}/${srr}.mRNA.genome.mapped.sorted.dedup.bam"

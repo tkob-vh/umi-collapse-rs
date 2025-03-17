@@ -7,7 +7,7 @@ edition = "2021"
 bumpalo = "3.17.0"
 clap = { version = "4.5.26", features = ["derive"] }
 lazy_static = "1.5.0"
-memchr = "2.7.4"
+memchr = { version = "2.7.4", features = ["std"] }
 pcre2 = "0.2.9"
 rust-htslib = { version = "0.49.0", features = ["static"] }
 tracing = "0.1.41"
