@@ -1,0 +1,32 @@
+path:
+  samtools: ../samtools-1.21/samtools 
+  hisat3n: ../hisat-3n/hisat-3n 
+  hisat3ntable: ../hisat-3n/hisat-3n-table
+  umicollapse: ../umicollapse/target/release/umicollapse
+  join_pileup.py: ../m5C-UBSseq-0.1/bin/join_pileup.py
+  group_pileup.py: ../m5C-UBSseq-0.1/bin/group_pileup.py
+  select_sites.py: ../m5C-UBSseq-0.1/bin/select_sites.py
+  filter_sites.py: ../m5C-UBSseq-0.1/bin/filter_sites.py
+
+reference:
+  ncrna:
+    fa: ../datasets/ncrna_ref/Homo_sapiens.GRCh38.ncrna.fa
+  genome:
+    fa: ../datasets/ref/Homo_sapiens.GRCh38.dna.primary_assembly.fa
+
+samples:
+  SRR23538290:
+    data:
+      - R1: ../datasets/SRR23538290/SRR23538290.fastq
+    library: INLINE
+  SRR23538291:
+    data:
+      - R1: ../datasets/SRR23538291/SRR23538291.fastq
+    library: INLINE
+  SRR23538292:
+    data:
+      - R1: ../datasets/SRR23538292/SRR23538292.fastq
+    library: INLINE
+
+ld_library_path:
+  intel_tbb: /data/spack/opt/spack/linux-ubuntu22.04-icelake/gcc-11.4.0/intel-tbb-2021.9.0-maqme5revwaezo5ftxagxs24xnkqjjvs/lib
