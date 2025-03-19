@@ -68,6 +68,7 @@ impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateSAM<A, M> {
     }
 }
 impl<A: Algorithm, M: Merge<UcSAMRead>> DeduplicateInterface for DeduplicateSAM<A, M> {
+    #[inline(always)]
     fn deduplicate_and_merge(&mut self, args: &Cli, start_time: &SystemTime) {
         // Set default umi pattern
         let regex = UcSAMRead::umi_pattern(args.umi_separator);

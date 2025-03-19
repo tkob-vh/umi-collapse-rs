@@ -46,8 +46,7 @@ impl Algorithm for Adjacency {
 
         let m: HashMap<&BitSet, i32> = reads.iter().map(|(&umi, rf)| (umi, rf.freq)).collect();
 
-        let mut data: D = D::default();
-        data.re_init(m, umi_length, self.k);
+        let mut data: D = D::new(m, umi_length, self.k);
         let mut res: Vec<&R> = Vec::new();
 
         for entry in freq {

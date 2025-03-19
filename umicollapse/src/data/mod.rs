@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 use crate::utils::bitset::BitSet;
 
 pub trait DataStruct<'a>: Default {
-    fn re_init(&mut self, umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32);
+    fn new(umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32) -> Self;
     fn remove_near(&mut self, umi: &BitSet, k: i32, max_freq: i32) -> HashSet<&'a BitSet>;
     fn contains(&self, umi: &BitSet) -> bool;
     #[allow(dead_code)]

@@ -66,9 +66,11 @@ impl<'a> Combo<'a> {
 
 impl<'a> DataStruct<'a> for Combo<'a> {
     #[allow(unused_variables)]
-    fn re_init(&mut self, umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32) {
-        self.umi_freq = umi_freq;
-        self.umi_length = umi_length;
+    fn new(umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32) -> Self {
+        Self {
+            umi_freq,
+            umi_length,
+        }
     }
     fn remove_near(
         &mut self,
