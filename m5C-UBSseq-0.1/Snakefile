@@ -42,6 +42,17 @@ if os.environ.get("TMPDIR") is None:
 envvars:
     "TMPDIR",
 
+if os.environ.get("LD_LIBRARY_PATH"):
+    os.environ["LD_LIBRARY_PATH"] = os.environ["LD_LIBRARY_PATH"] + ":" + config["ld_library_path"]["intel_tbb"]
+else:
+    os.environ["LD_LIBRARY_PATH"] = config["ld_library_path"]["intel_tbb"]
+
+os.environ["SLURM_MEM_BIND"] = "local"
+
+envvars:
+    "LD_LIBRARY_PATH",
+    "SLURM_MEM_BIND",
+
 
 rule all:
     input:
@@ -314,7 +325,7 @@ rule dedup_mapping:
         "benchmark/dedup_mapping/{sample}.tsv"
     shell:
         """
-        {BIN[umicollapse]} --mode bam \
+        srun {BIN[umicollapse]} --mode bam \
           --data naive \
           --merge avgqual \
           --num-threads {threads} \
