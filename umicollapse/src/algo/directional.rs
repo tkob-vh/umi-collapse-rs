@@ -71,8 +71,7 @@ impl Algorithm for Directional {
 
         umi_freqs.sort_by(|a, b| b.read_freq.freq.cmp(&a.read_freq.freq));
 
-        let mut data: D = D::default();
-        data.re_init(data_member, umi_length, self.k);
+        let mut data: D = D::new(data_member, umi_length, self.k);
 
         let mut res: Vec<&R> = Vec::new();
 

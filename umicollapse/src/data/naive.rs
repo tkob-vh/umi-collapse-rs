@@ -14,9 +14,13 @@ pub struct Naive<'bitset> {
 }
 
 impl<'a> DataStruct<'a> for Naive<'a> {
+    // #[allow(unused_variables)]
+    // fn re_init(&mut self, umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32) {
+    //     self.umi_freq = umi_freq;
+    // }
     #[allow(unused_variables)]
-    fn re_init(&mut self, umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32) {
-        self.umi_freq = umi_freq;
+    fn new(umi_freq: HashMap<&'a BitSet, i32>, umi_length: usize, max_edits: i32) -> Self {
+        Self { umi_freq }
     }
 
     fn remove_near(&mut self, umi: &BitSet, k: i32, max_freq: i32) -> HashSet<&'a BitSet> {

@@ -93,6 +93,7 @@ impl UcRead for UcSAMRead {
             .len()
     }
 
+    #[inline(always)]
     fn get_umi(&self, one: &One, umi_length: usize) -> utils::bitset::BitSet {
         let read_name = self.record.qname();
 
