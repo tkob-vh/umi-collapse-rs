@@ -13,6 +13,7 @@ pub struct Combo<'bitset> {
 }
 
 // TODO: fix the bugs in combo
+#[allow(clippy::too_many_arguments)]
 impl<'a> Combo<'a> {
     fn recursive_remove_near(
         &mut self,
@@ -21,7 +22,7 @@ impl<'a> Combo<'a> {
         k: i32,
         max_freq: i32,
         mut curr: BitSet,
-        res: &mut HashSet<&'a BitSet>,
+        _res: &mut HashSet<&'a BitSet>,
         kk: i32,
     ) {
         if k < 0 {
@@ -46,7 +47,7 @@ impl<'a> Combo<'a> {
                     k,
                     max_freq,
                     char_set(&mut curr, idx, c),
-                    res,
+                    _res,
                     kk,
                 );
             } else {
@@ -56,7 +57,7 @@ impl<'a> Combo<'a> {
                     k - 1,
                     max_freq,
                     char_set(&mut curr, idx, c),
-                    res,
+                    _res,
                     kk,
                 );
             }
