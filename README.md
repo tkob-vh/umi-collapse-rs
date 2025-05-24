@@ -1,7 +1,7 @@
 # umi-collapse-rs
-Rewrite [UMICollapse](https://github.com/Daniel-Liu-c0deb0t/UMICollapse) in Rust, achieving ~4.5x speedup. (Work in ASC25)
+Rewrite [UMICollapse](https://github.com/Daniel-Liu-c0deb0t/UMICollapse) in Rust, achieving `~4.5x` speedup (done in [ASC25](https://www.asc-events.net/StudentChallenge/History/2025/index.html)).
 
-## How to run
+## Usage
 ```sh
 #!/bin/bash
 
